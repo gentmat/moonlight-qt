@@ -39,6 +39,8 @@ public:
 
     Q_INVOKABLE void testConnectionForComputer(int computerIndex);
 
+    Q_INVOKABLE int findComputerByManualAddress(QString address);
+
     Q_INVOKABLE void wakeComputer(int computerIndex);
 
     Q_INVOKABLE void renameComputer(int computerIndex, QString name);

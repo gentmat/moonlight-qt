@@ -82,6 +82,11 @@ CenteredGridView {
         return model
     }
 
+    function openCloudDeckDialog()
+    {
+        cloudDeckDialog.open()
+    }
+
     Row {
         anchors.centerIn: parent
         spacing: 5
@@ -347,6 +352,11 @@ CenteredGridView {
             // Stop showing the spinner and show the image instead
             showSpinner = false
         }
+    }
+
+    CloudDeckDialog {
+        id: cloudDeckDialog
+        computerModel: pcGrid.computerModel
     }
 
     NavigableDialog {

@@ -337,6 +337,28 @@ ApplicationWindow {
             }
 
             NavigableToolButton {
+                id: cloudDeckButton
+                visible: stackView.currentItem instanceof PcView
+
+                iconSource: "qrc:/res/cloud.svg"
+
+                ToolTip.delay: 1000
+                ToolTip.timeout: 3000
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Connect to CloudDeck")
+
+                onClicked: {
+                    if (stackView.currentItem && stackView.currentItem.openCloudDeckDialog) {
+                        stackView.currentItem.openCloudDeckDialog()
+                    }
+                }
+
+                Keys.onDownPressed: {
+                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
+                }
+            }
+
+            NavigableToolButton {
                 property string browserUrl: ""
 
                 id: updateButton

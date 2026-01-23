@@ -1,4 +1,11 @@
 QT += core quick network quickcontrols2 svg
+
+qtHaveModule(webenginecore) {
+    QT += webenginecore
+    DEFINES += HAVE_WEBENGINE
+} else {
+    message(QtWebEngineCore not available; CloudDeck disabled)
+}
 CONFIG += c++11
 
 unix:!macx {
@@ -172,6 +179,7 @@ macx {
 }
 
 SOURCES += \
+    ../clouddeck/clouddeckmanager.cpp \
     backend/nvaddress.cpp \
     backend/nvapp.cpp \
     cli/pair.cpp \
@@ -214,6 +222,7 @@ SOURCES += \
 
 HEADERS += \
     SDL_compat.h \
+    ../clouddeck/clouddeckmanager.h \
     backend/nvaddress.h \
     backend/nvapp.h \
     cli/pair.h \
@@ -497,6 +506,7 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../moonlight-common
 else:unix: LIBS += -L$$OUT_PWD/../moonlight-common-c/ -lmoonlight-common-c
 
 INCLUDEPATH += $$PWD/../moonlight-common-c/moonlight-common-c/src
+INCLUDEPATH += $$PWD/../clouddeck
 DEPENDPATH += $$PWD/../moonlight-common-c/moonlight-common-c/src
 
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../qmdnsengine/release/ -lqmdnsengine

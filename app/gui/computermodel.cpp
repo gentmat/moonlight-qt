@@ -1,6 +1,10 @@
 #include "computermodel.h"
 
 #include <QThreadPool>
+#include <QUrl>
+#include <QHostAddress>
+
+#include "backend/nvaddress.h"
 
 ComputerModel::ComputerModel(QObject* object)
     : QAbstractListModel(object) {}
@@ -182,6 +186,34 @@ void ComputerModel::renameComputer(int computerIndex, QString name)
 QString ComputerModel::generatePinString()
 {
     return m_ComputerManager->generatePinString();
+}
+
+int ComputerModel::findComputerByManualAddress(QString address)
+{
+    address = address.trimmed();
+    if (address.isEmpty()) {
+        return -1;
+    }
+
+    NvAddress target;
+    QUrl url = QUrl::fromUserInput("moonlight://" + address);
+    if (url.isValid() && !url.host().isEmpty() && url.scheme() == "moonlight") {
+        target = NvAddress(url.host(), url.port(DEFAULT_HTTP_PORT));
+    } else if (QHostAddress(address).protocol() == QAbstractSocket::IPv6Protocol) {
+        target = NvAddress(address, DEFAULT_HTTP_PORT);
+    } else {
+        return -1;
+    }
+
+    for (int i = 0; i < m_Computers.count(); ++i) {
+        NvComputer* computer = m_Computers[i];
+        QReadLocker lock(&computer->lock);
+        if (computer->manualAddress == target || computer->activeAddress == target) {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 class DeferredTestConnectionTask : public QObject, public QRunnable
