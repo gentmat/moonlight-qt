@@ -18,6 +18,10 @@
   - Registers `CloudDeckDialog.qml` in the QML resource list.
 - app/resources.qrc
   - Registers the `cloud.svg` icon in the app resources.
+- changes.md
+  - Updated to include the clean rebuild script and documentation files in the change list.
+- technicalchanges.md
+  - Updated to describe the clean rebuild script and documentation updates.
 
 ## Added
 - clouddeck/clouddeckmanager.cpp
@@ -28,3 +32,5 @@
   - New dialog UI for CloudDeck login/start/pairing operations and status display.
 - app/res/cloud.svg
   - Cloud icon used by the new toolbar button.
+- clean_rebuild.sh
+  - Cleans in‑tree build artifacts and rebuilds the project from the root with `qmake6` and `make`.
