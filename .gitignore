@@ -18,3 +18,4 @@ app/debug/*
 app/*
 config.tests/*
 AntiHooking/*
+Makefile
