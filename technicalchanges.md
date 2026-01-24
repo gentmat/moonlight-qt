@@ -34,3 +34,10 @@
   - Cloud icon used by the new toolbar button.
 - clean_rebuild.sh
   - Cleans in‑tree build artifacts and rebuilds the project from the root with `qmake6` and `make`.
+- clean_rebuild.bat
+  - Adds a Windows clean rebuild script that bootstraps the VS toolchain/Qt bin path and rebuilds using `qmake` plus `jom`/`nmake`.
+  - Copies runtime DLLs from `libs/windows/lib/x64` plus `AntiHooking.dll` into the build output so the release exe has required dependencies (SDL2, SDL2_ttf, etc.).
+
+## Removed
+- build_with_vs_env.bat
+  - Removed the now-redundant VS environment wrapper script since `clean_rebuild.bat` handles setup.

@@ -13,3 +13,7 @@ app/Makefile.Release
 app/moonlight
 .qmake.stash
 .qmake.cache
+app/debug/*
+app/*
+config.tests/*
+AntiHooking/*

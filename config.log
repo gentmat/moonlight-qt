@@ -1,28 +1,10 @@
 executing config test SL
-+ cd /home/user/Documents/Projects/moonlight-qt/config.tests/SL && MAKEFLAGS= make distclean
-> /usr/bin/qmake6 -o Makefile SL.pro -spec /usr/lib64/qt6/mkspecs/linux-g++ 'CONFIG -= qt debug_and_release app_bundle lib_bundle'
-> rm -f main.o
-> rm -f *~ core *.core
-> rm -f SL 
-> rm -f Makefile
-+ cd /home/user/Documents/Projects/moonlight-qt/config.tests/SL && /usr/bin/qmake6  -spec /usr/lib64/qt6/mkspecs/linux-g++ "CONFIG -= qt debug_and_release app_bundle lib_bundle" /home/user/Documents/Projects/moonlight-qt/config.tests/SL
-+ cd /home/user/Documents/Projects/moonlight-qt/config.tests/SL && MAKEFLAGS= make
-> g++ -c -pipe -O2 -Wall -Wextra  -I. -I/usr/lib64/qt6/mkspecs/linux-g++ -o main.o main.cpp
-> main.cpp:1:10: fatal error: SLVideo.h: No such file or directory
->     1 | #include <SLVideo.h>
->       |          ^~~~~~~~~~~
-> compilation terminated.
-> make: *** [Makefile:510: main.o] Error 1
++ cd /d C:\Users\Maroun\Documents\Projects\moonlight-qt\config.tests\SL && C:\Qt\6.10.1\msvc2022_64\bin\qmake.exe  -spec C:/Qt/6.10.1/msvc2022_64/mkspecs/win32-msvc "CONFIG -= qt debug_and_release app_bundle lib_bundle" C:/Users/Maroun/Documents/Projects/moonlight-qt/config.tests/SL
+> ***Cannot detect .pro file in directory 'C:/Users/Maroun/Documents/Projects/moonlight-qt/config.tests/SL'.
+> QMake expects the file 'C:/Users/Maroun/Documents/Projects/moonlight-qt/config.tests/SL/SL.pro' or exactly one .pro file in the given directory.
 test SL FAILED
 executing config test EGL
-+ cd /home/user/Documents/Projects/moonlight-qt/config.tests/EGL && MAKEFLAGS= make distclean
-> /usr/bin/qmake6 -o Makefile EGL.pro -spec /usr/lib64/qt6/mkspecs/linux-g++ 'CONFIG -= qt debug_and_release app_bundle lib_bundle'
-> rm -f main.o
-> rm -f *~ core *.core
-> rm -f EGL 
-> rm -f Makefile
-+ cd /home/user/Documents/Projects/moonlight-qt/config.tests/EGL && /usr/bin/qmake6  -spec /usr/lib64/qt6/mkspecs/linux-g++ "CONFIG -= qt debug_and_release app_bundle lib_bundle" /home/user/Documents/Projects/moonlight-qt/config.tests/EGL
-+ cd /home/user/Documents/Projects/moonlight-qt/config.tests/EGL && MAKEFLAGS= make
-> g++ -c -pipe -O2 -Wall -Wextra -D_GNU_SOURCE=1 -D_REENTRANT -I. -I/usr/include/SDL2 -I/usr/include/ffmpeg -I/usr/lib64/qt6/mkspecs/linux-g++ -o main.o main.cpp
-> g++ -Wl,-O1 -o EGL  main.o   -lSDL2 -lEGL -lavcodec -lavutil   
-test EGL succeeded
++ cd /d C:\Users\Maroun\Documents\Projects\moonlight-qt\config.tests\EGL && C:\Qt\6.10.1\msvc2022_64\bin\qmake.exe  -spec C:/Qt/6.10.1/msvc2022_64/mkspecs/win32-msvc "CONFIG -= qt debug_and_release app_bundle lib_bundle" C:/Users/Maroun/Documents/Projects/moonlight-qt/config.tests/EGL
+> ***Cannot detect .pro file in directory 'C:/Users/Maroun/Documents/Projects/moonlight-qt/config.tests/EGL'.
+> QMake expects the file 'C:/Users/Maroun/Documents/Projects/moonlight-qt/config.tests/EGL/EGL.pro' or exactly one .pro file in the given directory.
+test EGL FAILED
