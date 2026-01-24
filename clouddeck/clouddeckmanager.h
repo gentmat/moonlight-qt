@@ -27,6 +27,7 @@ public:
     Q_INVOKABLE void checkInstanceStatus();
     Q_INVOKABLE void cancelCurrentOperation();
     Q_INVOKABLE QString getStoredHostPassword();
+    Q_INVOKABLE QString getStoredHostUser();
     Q_INVOKABLE QString getStoredServerAddress();
     Q_INVOKABLE QString getStoredEmail();
     Q_INVOKABLE QString getStoredPassword();
@@ -86,6 +87,7 @@ private:
     
     // Parsed machine info
     QString m_machineStatus;
+    QString m_hostUser;
     QString m_userPassword;
     QString m_sessionDuration;
     QString m_serverAddress;
@@ -93,6 +95,7 @@ private:
     QTimer *m_statusPollTimer;
     bool m_waitingForInstanceStart;
     OperationMode m_operationMode;
+    int m_pinEntryAttempts;
     int m_pollCount;  // Track number of polls for status updates
     qint64 m_pollStartTime;  // Track when polling started (in seconds since epoch)
     QString m_currentPin;  // Current PIN for pairing

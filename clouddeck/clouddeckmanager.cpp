@@ -16,6 +16,43 @@ QString toBase64String(const QString& value)
     return QString::fromLatin1(value.toUtf8().toBase64());
 }
 
+QString normalizeAddress(const QString& value)
+{
+    QString trimmed = value.trimmed();
+    if (trimmed.isEmpty()) {
+        return trimmed;
+    }
+
+    if (trimmed.startsWith('[')) {
+        int closingBracket = trimmed.indexOf(']');
+        if (closingBracket > 1) {
+            return trimmed.mid(1, closingBracket - 1);
+        }
+    }
+
+    int lastColon = trimmed.lastIndexOf(':');
+    if (lastColon > 0 && trimmed.count(':') == 1) {
+        return trimmed.left(lastColon);
+    }
+
+    return trimmed;
+}
+
+bool isMeaningfulHostUser(const QString& value)
+{
+    QString trimmed = value.trimmed();
+    if (trimmed.isEmpty()) {
+        return false;
+    }
+
+    QString lower = trimmed.toLower();
+    if (lower == "user" || lower == "username" || lower == "user name" || lower == "unknown") {
+        return false;
+    }
+
+    return true;
+}
+
 }
 
 CloudDeckManager::CloudDeckManager(QObject *parent)
@@ -31,6 +68,7 @@ CloudDeckManager::CloudDeckManager(QObject *parent)
     , m_statusPollTimer(new QTimer(this))
     , m_waitingForInstanceStart(false)
     , m_operationMode(MODE_PAIRING)
+    , m_pinEntryAttempts(0)
     , m_pollCount(0)
     , m_pollStartTime(0)
 {
@@ -89,10 +127,13 @@ void CloudDeckManager::loginWithCredentials(const QString &email, const QString 
     m_statusPollTimer->stop();
     m_formSubmitted = false;
     m_waitingForInstanceStart = false;
+    m_pinEntryAttempts = 0;
     m_pollCount = 0;
     m_pollStartTime = 0;
     m_currentPin.clear();
+    m_pinEntryAttempts = 0;
     m_machineStatus.clear();
+    m_hostUser.clear();
     m_userPassword.clear();
     m_sessionDuration.clear();
     m_serverAddress.clear();
@@ -148,6 +189,7 @@ void CloudDeckManager::cancelCurrentOperation()
     m_pollCount = 0;
     m_pollStartTime = 0;
     m_operationMode = MODE_PAIRING;
+    m_pinEntryAttempts = 0;
     m_currentPin.clear();
 
     if (m_webPage) {
@@ -349,6 +391,7 @@ void CloudDeckManager::clearStoredCredentials()
     QSettings settings;
     settings.remove("clouddeck/email");
     settings.remove("clouddeck/password");
+    settings.remove("clouddeck/hostUser");
     settings.remove("clouddeck/hostPassword");
     settings.remove("clouddeck/serverAddress");
 }
@@ -357,6 +400,19 @@ QString CloudDeckManager::getStoredHostPassword()
 {
     QSettings settings;
     return settings.value("clouddeck/hostPassword").toString();
+}
+
+QString CloudDeckManager::getStoredHostUser()
+{
+    QSettings settings;
+    QString hostUser = settings.value("clouddeck/hostUser").toString();
+    if (isMeaningfulHostUser(hostUser)) {
+        return hostUser;
+    }
+    if (!hostUser.isEmpty()) {
+        settings.remove("clouddeck/hostUser");
+    }
+    return settings.value("clouddeck/email").toString();
 }
 
 QString CloudDeckManager::getStoredServerAddress()
@@ -382,12 +438,14 @@ bool CloudDeckManager::isCloudDeckHost(const QString &hostAddress)
     QSettings settings;
     QString storedAddress = settings.value("clouddeck/serverAddress").toString();
     qInfo() << "CloudDeck: isCloudDeckHost check - hostAddress:" << hostAddress << "storedAddress:" << storedAddress;
-    if (storedAddress.isEmpty() || hostAddress.isEmpty()) {
+    QString normalizedHost = normalizeAddress(hostAddress);
+    QString normalizedStored = normalizeAddress(storedAddress);
+    if (normalizedStored.isEmpty() || normalizedHost.isEmpty()) {
         qInfo() << "CloudDeck: isCloudDeckHost - one address is empty, returning false";
         return false;
     }
     // Compare addresses (case-insensitive, handle potential variations)
-    bool match = hostAddress.compare(storedAddress, Qt::CaseInsensitive) == 0;
+    bool match = normalizedHost.compare(normalizedStored, Qt::CaseInsensitive) == 0;
     qInfo() << "CloudDeck: isCloudDeckHost - match:" << match;
     return match;
 }
@@ -585,6 +643,22 @@ void CloudDeckManager::parseDashboard()
                         result.sessionDuration = 'Unknown';
                     }
                 }
+
+                // Extract user from body text if present
+                result.user = '';
+                var lines = bodyText.split('\n');
+                for (var i = 0; i < lines.length; i++) {
+                    var line = lines[i].trim();
+                    var lower = line.toLowerCase();
+                    if (lower.startsWith('user:') || lower.startsWith('username:')) {
+                        var parts = line.split(':');
+                        if (parts.length > 1) {
+                            parts.shift();
+                            result.user = parts.join(':').trim();
+                        }
+                        break;
+                    }
+                }
                 
                 // Click Show button to reveal password
                 var spans = document.querySelectorAll('span');
@@ -619,10 +693,23 @@ void CloudDeckManager::parseDashboard()
                 if (durationStart > 18 && durationEnd > durationStart) {
                     m_sessionDuration = jsonStr.mid(durationStart, durationEnd - durationStart);
                 }
+
+                // Extract user
+                int userStart = jsonStr.indexOf("\"user\":\"") + 8;
+                int userEnd = jsonStr.indexOf("\"", userStart);
+                if (userStart > 7 && userEnd > userStart) {
+                    QString extractedUser = jsonStr.mid(userStart, userEnd - userStart);
+                    if (isMeaningfulHostUser(extractedUser)) {
+                        m_hostUser = extractedUser;
+                    }
+                }
             }
             
             qInfo() << "CloudDeck: Status:" << m_machineStatus;
             qInfo() << "CloudDeck: Session Duration:" << m_sessionDuration;
+            if (!m_hostUser.isEmpty()) {
+                qInfo() << "CloudDeck: User:" << m_hostUser;
+            }
             
             // Wait for SPA to update after clicking Show, then get password
             QTimer::singleShot(2500, this, &CloudDeckManager::clickShowPassword);
@@ -825,6 +912,7 @@ void CloudDeckManager::enterPinAndPair(const QString &pin)
     
     // Store PIN for potential retry
     m_currentPin = pin;
+    m_pinEntryAttempts = 0;
     
     // First click Connect to ensure dialog is open
     QString openDialogScript = R"(
@@ -907,10 +995,41 @@ void CloudDeckManager::enterPinInDialog()
     )").arg(m_currentPin);
     
     m_webPage->runJavaScript(script, [this](const QVariant &result) {
-        qInfo() << "CloudDeck: PIN entry result:" << result.toString();
-        
-        // Wait a moment for Angular to enable Pair button, then click it
-        QTimer::singleShot(500, this, &CloudDeckManager::clickPairButton);
+        QString jsonStr = result.toString();
+        qInfo() << "CloudDeck: PIN entry result:" << jsonStr;
+
+        if (jsonStr.contains("\"status\":\"pin_entered\"")) {
+            // Wait a moment for Angular to enable Pair button, then click it
+            QTimer::singleShot(500, this, &CloudDeckManager::clickPairButton);
+            return;
+        }
+
+        if (m_pinEntryAttempts < 5) {
+            m_pinEntryAttempts += 1;
+            qInfo() << "CloudDeck: PIN entry not ready (attempt" << m_pinEntryAttempts << "), retrying...";
+
+            if (jsonStr.contains("\"status\":\"input_not_found\"")) {
+                QString reopenScript = R"(
+                    (function() {
+                        var buttons = document.querySelectorAll('button');
+                        for (var i = 0; i < buttons.length; i++) {
+                            if (buttons[i].textContent.includes('Connect')) {
+                                buttons[i].click();
+                                return 'clicked_connect';
+                            }
+                        }
+                        return 'connect_not_found';
+                    })();
+                )";
+                m_webPage->runJavaScript(reopenScript, [](const QVariant &) {});
+            }
+
+            QTimer::singleShot(1000, this, &CloudDeckManager::enterPinInDialog);
+            return;
+        }
+
+        qInfo() << "CloudDeck: PIN entry failed after retries";
+        emit pairingCompleted(false, "Unable to enter the pairing PIN in CloudDeck. Please try again.");
     });
 }
 
@@ -948,12 +1067,20 @@ void CloudDeckManager::printMachineInfo()
     qInfo() << "╠══════════════════════════════════════════════════════════════╣";
     qInfo() << "║  Status:           " << m_machineStatus.leftJustified(42) << "║";
     qInfo() << "║  Session Duration: " << m_sessionDuration.leftJustified(42) << "║";
+    qInfo() << "║  User:             " << m_hostUser.leftJustified(42) << "║";
     qInfo() << "║  User Password:    " << m_userPassword.leftJustified(42) << "║";
     qInfo() << "╚══════════════════════════════════════════════════════════════╝";
     qInfo() << "";
     
     emit machineInfoReady(m_machineStatus, m_userPassword, m_sessionDuration);
     
+    // Save host user to settings for later retrieval
+    if (isMeaningfulHostUser(m_hostUser)) {
+        QSettings settings;
+        settings.setValue("clouddeck/hostUser", m_hostUser);
+        qInfo() << "CloudDeck: Host user saved to settings";
+    }
+
     // Save host password to settings for later retrieval
     if (!m_userPassword.isEmpty()) {
         QSettings settings;
@@ -1553,6 +1680,7 @@ void CloudDeckManager::clearStoredCredentials()
     QSettings settings;
     settings.remove("clouddeck/email");
     settings.remove("clouddeck/password");
+    settings.remove("clouddeck/hostUser");
     settings.remove("clouddeck/hostPassword");
     settings.remove("clouddeck/serverAddress");
 }
@@ -1581,6 +1709,16 @@ QString CloudDeckManager::getStoredHostPassword()
 {
     QSettings settings;
     return settings.value("clouddeck/hostPassword").toString();
+}
+
+QString CloudDeckManager::getStoredHostUser()
+{
+    QSettings settings;
+    QString hostUser = settings.value("clouddeck/hostUser").toString();
+    if (!hostUser.isEmpty()) {
+        return hostUser;
+    }
+    return settings.value("clouddeck/email").toString();
 }
 
 QString CloudDeckManager::getStoredServerAddress()

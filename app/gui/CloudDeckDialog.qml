@@ -217,9 +217,10 @@ NavigableDialog {
         }
     }
 
-    ColumnLayout {
-        width: 460
+    contentItem: ColumnLayout {
+        id: cloudDeckContent
         spacing: 12
+        implicitWidth: 460
 
         Label {
             text: qsTr("Connect your CloudDeck account to Moonlight.")
@@ -247,10 +248,7 @@ NavigableDialog {
             visible: hasStoredCredentials
             enabled: !busy
             onClicked: {
-                CloudDeckManager.clearStoredCredentials()
-                hasStoredCredentials = false
-                emailField.text = ""
-                passwordField.text = ""
+                clearCredentialsDialog.open()
             }
         }
 
@@ -284,13 +282,7 @@ NavigableDialog {
         id: buttonBox
 
         Button {
-            text: qsTr("Start Instance")
-            enabled: !busy && (hasStoredCredentials || (emailField.text.trim().length > 0 && passwordField.text.length > 0))
-            onClicked: startInstance()
-        }
-
-        Button {
-            text: qsTr("Connect & Pair")
+            text: qsTr("Add / Connect")
             enabled: !busy && emailField.text.trim().length > 0 && passwordField.text.length > 0
             onClicked: startPairing()
         }
@@ -299,6 +291,19 @@ NavigableDialog {
             text: qsTr("Close")
             enabled: true
             onClicked: cloudDeckDialog.close()
+        }
+    }
+
+    NavigableMessageDialog {
+        id: clearCredentialsDialog
+        text: qsTr("Clear saved CloudDeck credentials? This will remove the stored email and password.")
+        standardButtons: Dialog.Yes | Dialog.No
+
+        onAccepted: {
+            CloudDeckManager.clearStoredCredentials()
+            hasStoredCredentials = false
+            emailField.text = ""
+            passwordField.text = ""
         }
     }
 }

@@ -3,6 +3,7 @@ import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 
 import ComputerModel 1.0
+import CloudDeckManager 1.0
 
 import ComputerManager 1.0
 import StreamingPreferences 1.0
@@ -116,6 +117,8 @@ CenteredGridView {
         grid: pcGrid
 
         property alias pcContextMenu : pcContextMenuLoader.item
+        property string cloudDeckMatchAddress: model.manualAddress && model.manualAddress.length > 0 ? model.manualAddress : model.activeAddress
+        property bool isCloudDeckHost: CloudDeckManager.isCloudDeckHost(cloudDeckMatchAddress)
 
         Image {
             id: pcIcon
@@ -190,6 +193,11 @@ CenteredGridView {
                     visible: !model.online && model.wakeable
                 }
                 NavigableMenuItem {
+                    text: qsTr("Turn CloudDeck ON")
+                    onTriggered: CloudDeckManager.startCloudDeckInstance()
+                    visible: !model.online && model.paired && isCloudDeckHost && CloudDeckManager.hasStoredCredentials()
+                }
+                NavigableMenuItem {
                     text: qsTr("Test Network")
                     onTriggered: {
                         computerModel.testConnectionForComputer(index)
@@ -217,6 +225,8 @@ CenteredGridView {
                     text: qsTr("View Details")
                     onTriggered: {
                         showPcDetailsDialog.pcDetails = model.details
+                        showPcDetailsDialog.manualAddress = model.manualAddress
+                        showPcDetailsDialog.activeAddress = model.activeAddress
                         showPcDetailsDialog.open()
                     }
                 }
@@ -405,12 +415,101 @@ CenteredGridView {
         }
     }
 
-    NavigableMessageDialog {
+    NavigableDialog {
         id: showPcDetailsDialog
-        property string pcDetails : "";
-        text: showPcDetailsDialog.pcDetails
-        imageSrc: "qrc:/res/baseline-help_outline-24px.svg"
-        standardButtons: Dialog.Ok
+        property string pcDetails: ""
+        property string manualAddress: ""
+        property string activeAddress: ""
+        property string cloudDeckUser: ""
+        property string cloudDeckPassword: ""
+        property bool cloudDeckHost: false
+
+        onOpened: {
+            var hostAddress = manualAddress.length > 0 ? manualAddress : activeAddress
+            cloudDeckHost = CloudDeckManager.isCloudDeckHost(hostAddress)
+            if (cloudDeckHost) {
+                cloudDeckUser = "user"
+                cloudDeckPassword = CloudDeckManager.getStoredHostPassword()
+            } else {
+                cloudDeckUser = ""
+                cloudDeckPassword = ""
+            }
+        }
+
+        contentItem: ColumnLayout {
+            id: showPcDetailsContent
+            spacing: 12
+            implicitWidth: 520
+
+            Label {
+                text: showPcDetailsDialog.pcDetails
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            ColumnLayout {
+                visible: showPcDetailsDialog.cloudDeckHost
+                spacing: 6
+                Layout.fillWidth: true
+
+                Label {
+                    text: qsTr("CloudDeck")
+                    font.bold: true
+                }
+
+                Label {
+                    text: qsTr("User: %1").arg(showPcDetailsDialog.cloudDeckUser.length > 0 ? showPcDetailsDialog.cloudDeckUser : qsTr("Unknown"))
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+
+                RowLayout {
+                    spacing: 6
+                    Layout.fillWidth: true
+
+                    Label {
+                        text: qsTr("Password:")
+                    }
+
+                    TextField {
+                        id: cloudDeckPasswordField
+                        text: showPcDetailsDialog.cloudDeckPassword.length > 0 ? showPcDetailsDialog.cloudDeckPassword : qsTr("Unknown")
+                        readOnly: true
+                        Layout.fillWidth: true
+                    }
+
+                    ToolButton {
+                        text: qsTr("Copy")
+                        enabled: showPcDetailsDialog.cloudDeckPassword.length > 0
+                        onClicked: {
+                            cloudDeckPasswordField.forceActiveFocus()
+                            cloudDeckPasswordField.selectAll()
+                            cloudDeckPasswordField.copy()
+                            cloudDeckPasswordField.deselect()
+                        }
+                    }
+                }
+
+                Label {
+                    text: qsTr("Sunshine")
+                    font.bold: true
+                }
+
+                Label {
+                    text: qsTr("Username: sunshine")
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: qsTr("Password: sunshine")
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
+        footer: DialogButtonBox {
+            standardButtons: Dialog.Ok
+        }
     }
 
     ScrollBar.vertical: ScrollBar {}

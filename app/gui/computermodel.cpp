@@ -86,6 +86,10 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
                tr("Running Game ID: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->currentGameId) : tr("Unknown")) + '\n' +
                tr("HTTPS Port: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->activeHttpsPort) : tr("Unknown"));
     }
+    case ActiveAddressRole:
+        return computer->activeAddress.address();
+    case ManualAddressRole:
+        return computer->manualAddress.address();
     default:
         return QVariant();
     }
@@ -114,6 +118,8 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[StatusUnknownRole] = "statusUnknown";
     names[ServerSupportedRole] = "serverSupported";
     names[DetailsRole] = "details";
+    names[ActiveAddressRole] = "activeAddress";
+    names[ManualAddressRole] = "manualAddress";
 
     return names;
 }

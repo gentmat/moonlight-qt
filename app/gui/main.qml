@@ -319,7 +319,7 @@ ApplicationWindow {
                 ToolTip.delay: 1000
                 ToolTip.timeout: 3000
                 ToolTip.visible: hovered
-                ToolTip.text: qsTr("Add PC manually") + (newPcShortcut.nativeText ? (" ("+newPcShortcut.nativeText+")") : "")
+                ToolTip.text: qsTr("Add PC") + (newPcShortcut.nativeText ? (" ("+newPcShortcut.nativeText+")") : "")
 
                 Shortcut {
                     id: newPcShortcut
@@ -329,28 +329,6 @@ ApplicationWindow {
 
                 onClicked: {
                     addPcDialog.open()
-                }
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                id: cloudDeckButton
-                visible: stackView.currentItem instanceof PcView
-
-                iconSource: "qrc:/res/cloud.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Connect to CloudDeck")
-
-                onClicked: {
-                    if (stackView.currentItem && stackView.currentItem.openCloudDeckDialog) {
-                        stackView.currentItem.openCloudDeckDialog()
-                    }
                 }
 
                 Keys.onDownPressed: {
@@ -532,13 +510,16 @@ ApplicationWindow {
 
     NavigableDialog {
         id: addPcDialog
-        property string label: qsTr("Enter the IP address of your host PC:")
+        property string label: qsTr("How would you like to add a PC?")
 
         standardButtons: Dialog.Ok | Dialog.Cancel
 
         onOpened: {
-            // Force keyboard focus on the textbox so keyboard navigation works
-            editText.forceActiveFocus()
+            addPcCredentialsOption.checked = true
+            addPcManualOption.checked = false
+            editText.clear()
+            // Force keyboard focus on the first option so keyboard navigation works
+            addPcCredentialsOption.forceActiveFocus()
         }
 
         onClosed: {
@@ -546,21 +527,60 @@ ApplicationWindow {
         }
 
         onAccepted: {
+            if (addPcCredentialsOption.checked) {
+                if (stackView.currentItem && stackView.currentItem.openCloudDeckDialog) {
+                    stackView.currentItem.openCloudDeckDialog()
+                }
+                return
+            }
+
             if (editText.text) {
                 ComputerManager.addNewHostManually(editText.text.trim())
             }
         }
 
-        ColumnLayout {
+        contentItem: ColumnLayout {
+            id: addPcContent
+            spacing: 10
+            implicitWidth: 460
+            ButtonGroup {
+                id: addPcModeGroup
+            }
+
             Label {
                 text: addPcDialog.label
                 font.bold: true
             }
 
+            RadioButton {
+                id: addPcCredentialsOption
+                text: qsTr("Login with credentials")
+                checked: true
+                ButtonGroup.group: addPcModeGroup
+            }
+
+            RadioButton {
+                id: addPcManualOption
+                text: qsTr("Add PC manually")
+                ButtonGroup.group: addPcModeGroup
+                onCheckedChanged: {
+                    if (checked) {
+                        editText.forceActiveFocus()
+                    }
+                }
+            }
+
+            Label {
+                text: qsTr("Enter the IP address of your host PC:")
+                font.bold: true
+                visible: addPcManualOption.checked
+            }
+
             TextField {
                 id: editText
                 Layout.fillWidth: true
-                focus: true
+                visible: addPcManualOption.checked
+                enabled: addPcManualOption.checked
 
                 Keys.onReturnPressed: {
                     addPcDialog.accept()

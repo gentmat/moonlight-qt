@@ -7,13 +7,19 @@
 - app/main.cpp
   - Registers `CloudDeckManager` as a QML singleton so QML can call CloudDeck APIs.
 - app/gui/PcView.qml
-  - Adds a `CloudDeckDialog` instance and an `openCloudDeckDialog()` helper to open it from the toolbar button.
+  - Adds CloudDeck-aware context menu actions and a richer PC details dialog with CloudDeck credentials and Sunshine defaults.
 - app/gui/main.qml
-  - Adds a toolbar button (cloud icon) that opens the CloudDeck dialog when viewing PCs.
+  - Updates the Add PC dialog to offer credential login vs manual entry and removes the separate CloudDeck toolbar button.
 - app/gui/computermodel.cpp
   - Adds `findComputerByManualAddress()` helper to resolve a host by manual address for CloudDeck pairing flow.
+  - Exposes active/manual address strings for CloudDeck host detection in QML.
 - app/gui/computermodel.h
   - Declares the new `findComputerByManualAddress()` QML‑invokable method.
+  - Adds QML roles for active/manual addresses.
+- clouddeck/clouddeckmanager.cpp
+  - Extracts and stores the CloudDeck host user alongside the host password for later display.
+- clouddeck/clouddeckmanager.h
+  - Exposes a stored host user accessor for CloudDeck details in QML.
 - app/qml.qrc
   - Registers `CloudDeckDialog.qml` in the QML resource list.
 - app/resources.qrc
@@ -29,7 +35,7 @@
 - clouddeck/clouddeckmanager.h
   - Declares the CloudDeck manager API, signals, and internal state used by the QML dialog.
 - app/gui/CloudDeckDialog.qml
-  - New dialog UI for CloudDeck login/start/pairing operations and status display.
+  - New dialog UI for CloudDeck login/pairing operations and status display.
 - app/res/cloud.svg
   - Cloud icon used by the new toolbar button.
 - clean_rebuild.sh
