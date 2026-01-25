@@ -15,6 +15,7 @@ NavigableDialog {
     property bool pairingFlowInProgress: false
     property bool awaitingAddComplete: false
     property bool hasStoredCredentials: false
+    property bool autoStartInstance: false
     property string pendingAddress: ""
     property string statusText: ""
     property string errorText: ""
@@ -105,6 +106,11 @@ NavigableDialog {
         emailField.text = CloudDeckManager.getStoredEmail()
         passwordField.text = CloudDeckManager.getStoredPassword()
         emailField.forceActiveFocus()
+
+        if (autoStartInstance) {
+            autoStartInstance = false
+            startInstance()
+        }
     }
 
     onClosed: {

@@ -118,7 +118,13 @@ CenteredGridView {
 
         property alias pcContextMenu : pcContextMenuLoader.item
         property string cloudDeckMatchAddress: model.manualAddress && model.manualAddress.length > 0 ? model.manualAddress : model.activeAddress
-        property bool isCloudDeckHost: CloudDeckManager.isCloudDeckHost(cloudDeckMatchAddress)
+        property bool cloudDeckHostKnown: false
+        property bool cloudDeckHasCredentials: false
+
+        function refreshCloudDeckMenuState() {
+            cloudDeckHostKnown = CloudDeckManager.isCloudDeckHost(cloudDeckMatchAddress)
+            cloudDeckHasCredentials = CloudDeckManager.hasStoredCredentials()
+        }
 
         Image {
             id: pcIcon
@@ -173,6 +179,16 @@ CenteredGridView {
             asynchronous: true
             sourceComponent: NavigableMenu {
                 id: pcContextMenu
+                Component.onCompleted: {
+                    refreshCloudDeckMenuState()
+                }
+
+                Connections {
+                    target: pcContextMenu
+                    function onOpened() {
+                        refreshCloudDeckMenuState()
+                    }
+                }
                 MenuItem {
                     text: qsTr("PC Status: %1").arg(model.online ? qsTr("Online") : qsTr("Offline"))
                     font.bold: true
@@ -194,8 +210,11 @@ CenteredGridView {
                 }
                 NavigableMenuItem {
                     text: qsTr("Turn CloudDeck ON")
-                    onTriggered: CloudDeckManager.startCloudDeckInstance()
-                    visible: !model.online && model.paired && isCloudDeckHost && CloudDeckManager.hasStoredCredentials()
+                    onTriggered: {
+                        cloudDeckDialog.autoStartInstance = cloudDeckHasCredentials
+                        cloudDeckDialog.open()
+                    }
+                    visible: !model.online && model.paired && cloudDeckHostKnown
                 }
                 NavigableMenuItem {
                     text: qsTr("Test Network")

@@ -23,6 +23,16 @@ QString normalizeAddress(const QString& value)
         return trimmed;
     }
 
+    QUrl url = QUrl::fromUserInput(trimmed);
+    if (url.isValid() && !url.host().isEmpty()) {
+        return url.host();
+    }
+
+    int slashIndex = trimmed.indexOf('/');
+    if (slashIndex > 0) {
+        trimmed = trimmed.left(slashIndex);
+    }
+
     if (trimmed.startsWith('[')) {
         int closingBracket = trimmed.indexOf(']');
         if (closingBracket > 1) {
