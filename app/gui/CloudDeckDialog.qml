@@ -180,6 +180,7 @@ NavigableDialog {
                 statusText = qsTr("CloudDeck instance is running.")
                 manualStartInProgress = false
                 busy = false
+                cloudDeckDialog.close()
             }
         }
     }
@@ -219,6 +220,7 @@ NavigableDialog {
                 failWithError(error)
             } else {
                 statusText = qsTr("CloudDeck paired successfully.")
+                cloudDeckDialog.close()
             }
         }
     }
