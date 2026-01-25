@@ -8,12 +8,8 @@
   - Registers `CloudDeckManager` as a QML singleton so QML can call CloudDeck APIs.
 - app/gui/PcView.qml
   - Adds CloudDeck-aware context menu actions and a richer PC details dialog with CloudDeck credentials and Sunshine defaults.
-  - Adds a `CloudDeckDialog` instance and an `openCloudDeckDialog()` helper to open it from the toolbar button.
 - app/gui/main.qml
   - Updates the Add PC dialog to offer credential login vs manual entry and removes the separate CloudDeck toolbar button.
-  - Adds a toolbar button (cloud icon) that opens the CloudDeck dialog when viewing PCs.
-- app/gui/CloudDeckDialog.qml
-  - Auto-closes the dialog when pairing succeeds or when a manual instance start reports the instance running.
 - app/gui/computermodel.cpp
   - Adds `findComputerByManualAddress()` helper to resolve a host by manual address for CloudDeck pairing flow.
   - Exposes active/manual address strings for CloudDeck host detection in QML.
@@ -22,7 +18,6 @@
   - Adds QML roles for active/manual addresses.
 - clouddeck/clouddeckmanager.cpp
   - Extracts and stores the CloudDeck host user alongside the host password for later display.
-  - Extends instance-start polling timeout to 10 minutes before reporting a failure.
 - clouddeck/clouddeckmanager.h
   - Exposes a stored host user accessor for CloudDeck details in QML.
 - app/qml.qrc
@@ -48,8 +43,6 @@
 - clean_rebuild.bat
   - Adds a Windows clean rebuild script that bootstraps the VS toolchain/Qt bin path and rebuilds using `qmake` plus `jom`/`nmake`.
   - Copies runtime DLLs from `libs/windows/lib/x64` plus `AntiHooking.dll` into the build output so the release exe has required dependencies (SDL2, SDL2_ttf, etc.).
-- clouddeck/clouddeckmanager.cpp
-  - Extends instance-start polling timeout to 10 minutes before reporting a failure.
 
 ## Removed
 - build_with_vs_env.bat

@@ -5,14 +5,12 @@
 - app/main.cpp
 - app/gui/PcView.qml
 - app/gui/main.qml
-- app/gui/CloudDeckDialog.qml
 - app/gui/computermodel.cpp
 - app/gui/computermodel.h
 - app/qml.qrc
 - app/resources.qrc
 - changes.md
 - clean_rebuild.bat
-- clouddeck/clouddeckmanager.cpp
 - technicalchanges.md
 
 ## Added

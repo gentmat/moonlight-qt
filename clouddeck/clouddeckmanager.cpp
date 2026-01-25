@@ -1432,9 +1432,9 @@ void CloudDeckManager::pollInstanceStatus()
         } else if (status.contains("Starting", Qt::CaseInsensitive)) {
             qInfo() << "CloudDeck: Instance is starting, continuing to poll...";
             
-            // Timeout after 10 minutes (600 seconds)
-            if (elapsed > 600) {
-                qInfo() << "CloudDeck: Instance start timeout after 10 minutes";
+            // Timeout after 3 minutes (180 seconds)
+            if (elapsed > 180) {
+                qInfo() << "CloudDeck: Instance start timeout after 3 minutes";
                 m_statusPollTimer->stop();
                 m_waitingForInstanceStart = false;
                 emit instanceStatusChanged("Timeout: Instance taking too long to start");
@@ -1457,9 +1457,9 @@ void CloudDeckManager::pollInstanceStatus()
                    status.contains("Stopped", Qt::CaseInsensitive)) {
             qInfo() << "CloudDeck: Instance is still off/stopped";
             
-            // Timeout after 10 minutes (600 seconds)
-            if (elapsed > 600) {
-                qInfo() << "CloudDeck: Instance start timeout after 10 minutes";
+            // Timeout after 3 minutes (180 seconds)
+            if (elapsed > 180) {
+                qInfo() << "CloudDeck: Instance start timeout after 3 minutes";
                 m_statusPollTimer->stop();
                 m_waitingForInstanceStart = false;
                 emit instanceStatusChanged("Timeout: Instance failed to start");
@@ -1478,9 +1478,9 @@ void CloudDeckManager::pollInstanceStatus()
                 emit pairingStatusChanged(QString("Waiting for instance to start...\n\nWaiting: %1 | Check #%2\nNext check in 5 seconds...").arg(timeStr).arg(m_pollCount));
             }
         } else {
-            // Unknown status - also timeout after 10 minutes
-            if (elapsed > 600) {
-                qInfo() << "CloudDeck: Unknown status timeout after 10 minutes";
+            // Unknown status - also timeout after 3 minutes
+            if (elapsed > 180) {
+                qInfo() << "CloudDeck: Unknown status timeout after 3 minutes";
                 m_statusPollTimer->stop();
                 m_waitingForInstanceStart = false;
                 emit instanceStatusChanged("Timeout: Unable to determine instance status");
@@ -1616,9 +1616,9 @@ void CloudDeckManager::checkInstanceStatusAfterRefresh()
                 emit pairingStatusChanged(QString("Instance is starting...\n\nWaiting: %1 | Check #%2").arg(timeStr).arg(m_pollCount));
             }
         } else {
-            // Check for timeout (10 minutes)
-            if (elapsed > 600) {
-                qInfo() << "CloudDeck: Instance start timeout after 10 minutes";
+            // Check for timeout
+            if (elapsed > 180) {
+                qInfo() << "CloudDeck: Instance start timeout after 3 minutes";
                 m_statusPollTimer->stop();
                 m_waitingForInstanceStart = false;
                 emit instanceStatusChanged("Timeout: Instance failed to start");
