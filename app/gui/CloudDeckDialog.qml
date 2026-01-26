@@ -2,7 +2,7 @@ import QtQuick 2.9
 import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 
-import CloudDeckManager 1.0
+import CloudDeckManagerApi 1.0
 import ComputerManager 1.0
 import ComputerModel 1.0
 
@@ -21,6 +21,9 @@ NavigableDialog {
     property string errorText: ""
     property int retryCount: 0
     property int maxRetries: 10
+    property string accessToken: ""
+    property string machineId: ""
+    property bool startIssued: false
 
     title: qsTr("CloudDeck")
 
@@ -33,6 +36,9 @@ NavigableDialog {
         statusText = ""
         errorText = ""
         retryCount = 0
+        accessToken = ""
+        machineId = ""
+        startIssued = false
         pairingRetryTimer.stop()
     }
 
@@ -57,7 +63,9 @@ NavigableDialog {
         resetState()
         busy = true
         statusText = qsTr("Connecting to CloudDeck...")
-        CloudDeckManager.startPairingWithCredentials(emailValue, passwordField.text)
+        pairingFlowInProgress = true
+        manualStartInProgress = false
+        CloudDeckManagerApi.loginWithCredentials(emailValue, passwordField.text)
     }
 
     function startInstance() {
@@ -75,9 +83,10 @@ NavigableDialog {
         statusText = qsTr("Starting CloudDeck instance...")
 
         if (hasInputCredentials) {
-            CloudDeckManager.startInstanceWithCredentials(emailValue, passwordField.text)
+            CloudDeckManagerApi.loginWithCredentials(emailValue, passwordField.text)
         } else {
-            CloudDeckManager.startCloudDeckInstance()
+            CloudDeckManagerApi.loginWithCredentials(CloudDeckManagerApi.getStoredEmail(),
+                                                     CloudDeckManagerApi.getStoredPassword())
         }
     }
 
@@ -94,7 +103,7 @@ NavigableDialog {
         var pin = computerModel.generatePinString()
         statusText = qsTr("Pairing with CloudDeck...")
         computerModel.pairComputer(index, pin)
-        CloudDeckManager.enterPinAndPair(pin)
+        CloudDeckManagerApi.addMachineClient(accessToken, machineId, pin)
         awaitingAddComplete = false
         pairingFlowInProgress = true
         return true
@@ -102,9 +111,9 @@ NavigableDialog {
 
     onOpened: {
         resetState()
-        hasStoredCredentials = CloudDeckManager.hasStoredCredentials()
-        emailField.text = CloudDeckManager.getStoredEmail()
-        passwordField.text = CloudDeckManager.getStoredPassword()
+        hasStoredCredentials = CloudDeckManagerApi.hasStoredCredentials()
+        emailField.text = CloudDeckManagerApi.getStoredEmail()
+        passwordField.text = CloudDeckManagerApi.getStoredPassword()
         emailField.forceActiveFocus()
 
         if (autoStartInstance) {
@@ -115,7 +124,7 @@ NavigableDialog {
 
     onClosed: {
         if (busy) {
-            CloudDeckManager.cancelCurrentOperation()
+            CloudDeckManagerApi.cancelCurrentOperation()
         }
         resetState()
     }
@@ -141,45 +150,78 @@ NavigableDialog {
     }
 
     Connections {
-        target: CloudDeckManager
+        target: CloudDeckManagerApi
 
-        function onLoginCompleted(success, error) {
-            if (!success) {
-                failWithError(error)
+        function onLoginCompleted(status, accessTokenValue, expiresIn, idToken, refreshToken, tokenType, errorCode, errorMessage, challengeName, challengeParameters) {
+            if (status !== CloudDeckManagerApi.AuthSuccess) {
+                failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
                 return
             }
+
             hasStoredCredentials = true
+            accessToken = accessTokenValue
+            statusText = pairingFlowInProgress ? qsTr("Login successful! Fetching machine info...")
+                                               : qsTr("Fetching CloudDeck status...")
+            CloudDeckManagerApi.fetchMachineId(accessToken)
         }
 
-        function onPairingStatusChanged(status) {
-            statusText = status
-        }
-
-        function onInstanceStatusChanged(status) {
-            statusText = status
-            if (status.startsWith("Error:") || status.startsWith("Timeout:")) {
-                failWithError(status)
-            }
-        }
-
-        function onServerAddressReady(serverAddress) {
-            pendingAddress = serverAddress
-            statusText = qsTr("Found CloudDeck host %1. Adding to Moonlight...").arg(serverAddress)
-            awaitingAddComplete = true
-            ComputerManager.addNewHostManually(serverAddress)
-        }
-
-        function onPairingCompleted(success, error) {
+        function onMachineIdFetched(success, machineIdValue, errorCode, errorMessage) {
             if (!success) {
-                failWithError(error)
+                failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
+                return
+            }
+
+            machineId = machineIdValue
+            statusText = qsTr("Fetching CloudDeck status...")
+            CloudDeckManagerApi.fetchMachineStatus(machineId, accessToken)
+        }
+
+        function onMachineStatusUpdated(status, publicIp, password, lastStarted, createdAt) {
+            var lowerStatus = status.toLowerCase()
+
+            if (lowerStatus === "running") {
+                if (pairingFlowInProgress) {
+                    pendingAddress = publicIp
+                    statusText = qsTr("Found CloudDeck host %1. Adding to Moonlight...").arg(publicIp)
+                    awaitingAddComplete = true
+                    ComputerManager.addNewHostManually(publicIp)
+                } else if (manualStartInProgress) {
+                    statusText = qsTr("CloudDeck instance is running.")
+                    manualStartInProgress = false
+                    busy = false
+                }
+                return
+            }
+
+            if (lowerStatus === "off" || lowerStatus === "stopping" || lowerStatus === "starting") {
+                if (lowerStatus === "off" || lowerStatus === "stopping") {
+                    statusText = qsTr("Instance is off. Starting CloudDeck...")
+                } else {
+                    statusText = qsTr("Instance is starting...")
+                }
+                if (!startIssued) {
+                    startIssued = true
+                    CloudDeckManagerApi.startMachine(machineId, accessToken)
+                }
+                return
+            }
+
+            statusText = qsTr("Instance status: %1").arg(status)
+        }
+
+        function onMachineStatusFailed(errorCode, errorMessage) {
+            failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
+        }
+
+        function onMachineStartFinished(success, status, errorCode, errorMessage) {
+            if (!success) {
+                failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
             }
         }
 
-        function onInstanceReady() {
-            if (manualStartInProgress) {
-                statusText = qsTr("CloudDeck instance is running.")
-                manualStartInProgress = false
-                busy = false
+        function onMachineClientAdded(success, response, errorCode, errorMessage) {
+            if (!success) {
+                failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
             }
         }
     }
@@ -306,7 +348,7 @@ NavigableDialog {
         standardButtons: Dialog.Yes | Dialog.No
 
         onAccepted: {
-            CloudDeckManager.clearStoredCredentials()
+            CloudDeckManagerApi.clearStoredCredentials()
             hasStoredCredentials = false
             emailField.text = ""
             passwordField.text = ""

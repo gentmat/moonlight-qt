@@ -1,11 +1,4 @@
 QT += core quick network quickcontrols2 svg
-
-qtHaveModule(webenginecore) {
-    QT += webenginecore
-    DEFINES += HAVE_WEBENGINE
-} else {
-    message(QtWebEngineCore not available; CloudDeck disabled)
-}
 CONFIG += c++11
 
 unix:!macx {
@@ -179,7 +172,7 @@ macx {
 }
 
 SOURCES += \
-    ../clouddeck/clouddeckmanager.cpp \
+    ../clouddeck/clouddeckmanagerapi.cpp \
     backend/nvaddress.cpp \
     backend/nvapp.cpp \
     cli/pair.cpp \
@@ -222,7 +215,7 @@ SOURCES += \
 
 HEADERS += \
     SDL_compat.h \
-    ../clouddeck/clouddeckmanager.h \
+    ../clouddeck/clouddeckmanagerapi.h \
     backend/nvaddress.h \
     backend/nvapp.h \
     cli/pair.h \

@@ -2,10 +2,10 @@
 
 ## Modified
 - app/app.pro
-  - Adds Qt WebEngine detection and `HAVE_WEBENGINE` define so CloudDeck can use WebEngine when available.
-  - Adds CloudDeck sources/headers and include path so the manager is built and visible to the app.
+  - Removes Qt WebEngine dependency; CloudDeck now uses REST/Cognito APIs.
+  - Adds CloudDeck API sources/headers and include path so the manager is built and visible to the app.
 - app/main.cpp
-  - Registers `CloudDeckManager` as a QML singleton so QML can call CloudDeck APIs.
+  - Registers `CloudDeckManagerApi` as a QML singleton for CloudDeck API access.
 - app/gui/PcView.qml
   - Adds CloudDeck-aware context menu actions and a richer PC details dialog with CloudDeck credentials and Sunshine defaults.
 - app/gui/main.qml
@@ -16,10 +16,10 @@
 - app/gui/computermodel.h
   - Declares the new `findComputerByManualAddress()` QML‑invokable method.
   - Adds QML roles for active/manual addresses.
-- clouddeck/clouddeckmanager.cpp
-  - Extracts and stores the CloudDeck host user alongside the host password for later display.
-- clouddeck/clouddeckmanager.h
-  - Exposes a stored host user accessor for CloudDeck details in QML.
+- clouddeck/clouddeckmanagerapi.cpp
+  - Implements CloudDeck REST/Cognito flows (login, machine status/start/stop, add client).
+- clouddeck/clouddeckmanagerapi.h
+  - Declares CloudDeck REST API surface and QML-facing helpers.
 - app/qml.qrc
   - Registers `CloudDeckDialog.qml` in the QML resource list.
 - app/resources.qrc
@@ -30,10 +30,10 @@
   - Updated to describe the clean rebuild script and documentation updates.
 
 ## Added
-- clouddeck/clouddeckmanager.cpp
-  - Implements the CloudDeck web login/start/pairing flow using Qt WebEngine and signals to update QML UI.
-- clouddeck/clouddeckmanager.h
-  - Declares the CloudDeck manager API, signals, and internal state used by the QML dialog.
+- clouddeck/clouddeckmanagerapi.cpp
+  - Implements the CloudDeck REST/Cognito API client with machine lifecycle polling.
+- clouddeck/clouddeckmanagerapi.h
+  - Declares the CloudDeck REST API surface and QML helpers.
 - app/gui/CloudDeckDialog.qml
   - New dialog UI for CloudDeck login/pairing operations and status display.
 - app/res/cloud.svg
@@ -47,3 +47,7 @@
 ## Removed
 - build_with_vs_env.bat
   - Removed the now-redundant VS environment wrapper script since `clean_rebuild.bat` handles setup.
+- clouddeck/clouddeckmanager.cpp
+  - Removed the old Qt WebEngine-based CloudDeck manager.
+- clouddeck/clouddeckmanager.h
+  - Removed the old Qt WebEngine-based CloudDeck manager.

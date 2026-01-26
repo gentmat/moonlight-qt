@@ -14,8 +14,8 @@
 - technicalchanges.md
 
 ## Added
-- clouddeck/clouddeckmanager.cpp
-- clouddeck/clouddeckmanager.h
+- clouddeck/clouddeckmanagerapi.cpp
+- clouddeck/clouddeckmanagerapi.h
 - app/gui/CloudDeckDialog.qml
 - app/res/cloud.svg
 - clean_rebuild.sh
@@ -23,6 +23,8 @@
 
 ## Removed
 - build_with_vs_env.bat
+- clouddeck/clouddeckmanager.cpp
+- clouddeck/clouddeckmanager.h
 
 ## Notes
 - Add PC now offers credential login vs manual entry; CloudDeck start is available from the PC context menu.

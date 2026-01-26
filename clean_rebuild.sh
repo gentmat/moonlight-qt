@@ -17,5 +17,14 @@ done
 rm -f "$ROOT/app/moonlight"
 
 # Rebuild
-qmake6 "$ROOT/moonlight-qt.pro"
+if command -v qmake6 >/dev/null 2>&1; then
+  QMAKE_CMD="qmake6"
+elif command -v qmake >/dev/null 2>&1; then
+  QMAKE_CMD="qmake"
+else
+  echo "Unable to find qmake6 or qmake in PATH."
+  exit 1
+fi
+
+"$QMAKE_CMD" "$ROOT/moonlight-qt.pro"
 make -C "$ROOT" -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"

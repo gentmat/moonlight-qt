@@ -3,7 +3,7 @@ import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 
 import ComputerModel 1.0
-import CloudDeckManager 1.0
+import CloudDeckManagerApi 1.0
 
 import ComputerManager 1.0
 import StreamingPreferences 1.0
@@ -122,8 +122,8 @@ CenteredGridView {
         property bool cloudDeckHasCredentials: false
 
         function refreshCloudDeckMenuState() {
-            cloudDeckHostKnown = CloudDeckManager.isCloudDeckHost(cloudDeckMatchAddress)
-            cloudDeckHasCredentials = CloudDeckManager.hasStoredCredentials()
+            cloudDeckHostKnown = CloudDeckManagerApi.isCloudDeckHost(cloudDeckMatchAddress)
+            cloudDeckHasCredentials = CloudDeckManagerApi.hasStoredCredentials()
         }
 
         Image {
@@ -445,10 +445,10 @@ CenteredGridView {
 
         onOpened: {
             var hostAddress = manualAddress.length > 0 ? manualAddress : activeAddress
-            cloudDeckHost = CloudDeckManager.isCloudDeckHost(hostAddress)
+            cloudDeckHost = CloudDeckManagerApi.isCloudDeckHost(hostAddress)
             if (cloudDeckHost) {
                 cloudDeckUser = "user"
-                cloudDeckPassword = CloudDeckManager.getStoredHostPassword()
+                cloudDeckPassword = CloudDeckManagerApi.getStoredHostPassword()
             } else {
                 cloudDeckUser = ""
                 cloudDeckPassword = ""
