@@ -21,6 +21,10 @@ NavigableDialog {
     property string errorText: ""
     property int retryCount: 0
     property int maxRetries: 10
+    property int pairingRetryCount: 0
+    property int maxPairingRetries: 5
+    property int pendingPairIndex: -1
+    property string pendingPin: ""
     property string accessToken: ""
     property string machineId: ""
     property bool startIssued: false
@@ -36,10 +40,15 @@ NavigableDialog {
         statusText = ""
         errorText = ""
         retryCount = 0
+        pairingRetryCount = 0
+        pendingPairIndex = -1
+        pendingPin = ""
         accessToken = ""
         machineId = ""
         startIssued = false
         pairingRetryTimer.stop()
+        pinSubmitTimer.stop()
+        successCloseTimer.stop()
     }
 
     function failWithError(message) {
@@ -50,7 +59,12 @@ NavigableDialog {
         pairingFlowInProgress = false
         awaitingAddComplete = false
         retryCount = 0
+        pairingRetryCount = 0
+        pendingPairIndex = -1
+        pendingPin = ""
         pairingRetryTimer.stop()
+        pinSubmitTimer.stop()
+        successCloseTimer.stop()
     }
 
     function startPairing() {
@@ -90,6 +104,29 @@ NavigableDialog {
         }
     }
 
+    function resolvePendingPairIndex() {
+        if (pendingPairIndex >= 0) {
+            return pendingPairIndex
+        }
+        if (!computerModel || pendingAddress.length === 0) {
+            return -1
+        }
+        return computerModel.findComputerByManualAddress(pendingAddress)
+    }
+
+    function startAutoPairing(index) {
+        if (index < 0) {
+            failWithError(qsTr("Unable to find the CloudDeck host in Moonlight. Please try again."))
+            return
+        }
+
+        pendingPairIndex = index
+        pendingPin = computerModel.generatePinString()
+        statusText = qsTr("Pairing with CloudDeck...")
+        computerModel.pairComputer(index, pendingPin)
+        pinSubmitTimer.restart()
+    }
+
     function tryStartPairing() {
         if (!computerModel || pendingAddress.length === 0) {
             return false
@@ -100,13 +137,46 @@ NavigableDialog {
             return false
         }
 
-        var pin = computerModel.generatePinString()
-        statusText = qsTr("Pairing with CloudDeck...")
-        computerModel.pairComputer(index, pin)
-        CloudDeckManagerApi.addMachineClient(accessToken, machineId, pin)
-        awaitingAddComplete = false
-        pairingFlowInProgress = true
+        startAutoPairing(index)
         return true
+    }
+
+    function isPinMismatchError(message) {
+        if (!message || message.length === 0) {
+            return false
+        }
+        var lower = message.toLowerCase()
+        if (lower.indexOf("pin") === -1) {
+            return false
+        }
+        return lower.indexOf("didn't match") >= 0 ||
+               lower.indexOf("did not match") >= 0 ||
+               lower.indexOf("mismatch") >= 0 ||
+               lower.indexOf("invalid") >= 0
+    }
+
+    function schedulePairingRetry(message) {
+        if (pairingRetryCount >= maxPairingRetries) {
+            failWithError(message)
+            return
+        }
+
+        pairingRetryCount += 1
+        pendingPin = ""
+        statusText = qsTr("PIN mismatch. Retrying pairing (%1/%2)...")
+                     .arg(pairingRetryCount)
+                     .arg(maxPairingRetries)
+
+        var index = resolvePendingPairIndex()
+        if (index < 0) {
+            failWithError(message)
+            return
+        }
+
+        pendingPairIndex = index
+        pendingPin = computerModel.generatePinString()
+        computerModel.pairComputer(index, pendingPin)
+        pinSubmitTimer.restart()
     }
 
     onOpened: {
@@ -149,6 +219,33 @@ NavigableDialog {
         }
     }
 
+    Timer {
+        id: pinSubmitTimer
+        interval: 3000
+        repeat: false
+
+        onTriggered: {
+            if (!pairingFlowInProgress || pendingPin.length === 0) {
+                return
+            }
+            if (accessToken.length === 0 || machineId.length === 0) {
+                failWithError(qsTr("Unable to submit PIN. Please try again."))
+                return
+            }
+            CloudDeckManagerApi.addMachineClient(accessToken, machineId, pendingPin)
+        }
+    }
+
+    Timer {
+        id: successCloseTimer
+        interval: 1500
+        repeat: false
+
+        onTriggered: {
+            cloudDeckDialog.close()
+        }
+    }
+
     Connections {
         target: CloudDeckManagerApi
 
@@ -181,6 +278,9 @@ NavigableDialog {
 
             if (lowerStatus === "running") {
                 if (pairingFlowInProgress) {
+                    if (awaitingAddComplete) {
+                        return
+                    }
                     pendingAddress = publicIp
                     statusText = qsTr("Found CloudDeck host %1. Adding to Moonlight...").arg(publicIp)
                     awaitingAddComplete = true
@@ -220,6 +320,9 @@ NavigableDialog {
         }
 
         function onMachineClientAdded(success, response, errorCode, errorMessage) {
+            if (!pairingFlowInProgress) {
+                return
+            }
             if (!success) {
                 failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
             }
@@ -239,10 +342,9 @@ NavigableDialog {
                 return
             }
 
-            if (!tryStartPairing()) {
-                retryCount = 0
-                pairingRetryTimer.start()
-            }
+            retryCount = 0
+            statusText = qsTr("Waiting for CloudDeck host to appear...")
+            pairingRetryTimer.start()
         }
     }
 
@@ -254,14 +356,20 @@ NavigableDialog {
                 return
             }
 
+            if (error !== undefined) {
+                if (isPinMismatchError(error)) {
+                    schedulePairingRetry(error)
+                    return
+                }
+                failWithError(error)
+                return
+            }
+
             pairingFlowInProgress = false
             busy = false
-
-            if (error !== undefined) {
-                failWithError(error)
-            } else {
-                statusText = qsTr("CloudDeck paired successfully.")
-            }
+            pairingRetryCount = 0
+            statusText = qsTr("CloudDeck paired successfully.")
+            successCloseTimer.restart()
         }
     }
 
@@ -330,15 +438,15 @@ NavigableDialog {
         id: buttonBox
 
         Button {
-            text: qsTr("Add / Connect")
-            enabled: !busy && emailField.text.trim().length > 0 && passwordField.text.length > 0
-            onClicked: startPairing()
-        }
-
-        Button {
             text: qsTr("Close")
             enabled: true
             onClicked: cloudDeckDialog.close()
+        }
+
+        Button {
+            text: qsTr("Add / Connect")
+            enabled: !busy && emailField.text.trim().length > 0 && passwordField.text.length > 0
+            onClicked: startPairing()
         }
     }
 
