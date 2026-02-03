@@ -2,12 +2,12 @@
 
 ## Modified
 - app/app.pro
-  - Adds Qt WebEngine detection and `HAVE_WEBENGINE` define so CloudDeck can use WebEngine when available.
-  - Adds CloudDeck sources/headers and include path so the manager is built and visible to the app.
+  - Adds CloudDeck API sources/headers and include path so the manager is built and visible to the app.
 - app/main.cpp
-  - Registers `CloudDeckManager` as a QML singleton so QML can call CloudDeck APIs.
+  - Registers `CloudDeckManagerApi` as a QML singleton for CloudDeck API access.
 - app/gui/PcView.qml
   - Adds CloudDeck-aware context menu actions and a richer PC details dialog with CloudDeck credentials and Sunshine defaults.
+  - Restores normal click-to-pair behavior; CloudDeck pairing is handled in the dialog flow.
 - app/gui/main.qml
   - Updates the Add PC dialog to offer credential login vs manual entry and removes the separate CloudDeck toolbar button.
 - app/gui/computermodel.cpp
@@ -16,10 +16,12 @@
 - app/gui/computermodel.h
   - Declares the new `findComputerByManualAddress()` QML‑invokable method.
   - Adds QML roles for active/manual addresses.
-- clouddeck/clouddeckmanager.cpp
-  - Extracts and stores the CloudDeck host user alongside the host password for later display.
-- clouddeck/clouddeckmanager.h
-  - Exposes a stored host user accessor for CloudDeck details in QML.
+- clouddeck/clouddeckmanagerapi.cpp
+  - Implements CloudDeck REST/Cognito flows (login, GetUser, account lookup, machine status/start/stop, add client).
+  - Tracks access-token expiry time and exposes seconds-remaining/expired helpers to QML.
+  - Polls machine status during transitions and caches password/public IP/timestamps for the UI.
+- clouddeck/clouddeckmanagerapi.h
+  - Declares CloudDeck REST API surface, token expiry helpers, and machine metadata accessors for QML.
 - app/qml.qrc
   - Registers `CloudDeckDialog.qml` in the QML resource list.
 - app/resources.qrc
@@ -30,12 +32,13 @@
   - Updated to describe the clean rebuild script and documentation updates.
 
 ## Added
-- clouddeck/clouddeckmanager.cpp
-  - Implements the CloudDeck web login/start/pairing flow using Qt WebEngine and signals to update QML UI.
-- clouddeck/clouddeckmanager.h
-  - Declares the CloudDeck manager API, signals, and internal state used by the QML dialog.
+- clouddeck/clouddeckmanagerapi.cpp
+  - Implements the CloudDeck REST/Cognito API client with machine lifecycle polling.
+- clouddeck/clouddeckmanagerapi.h
+  - Declares the CloudDeck REST API surface and QML helpers.
 - app/gui/CloudDeckDialog.qml
   - New dialog UI for CloudDeck login/pairing operations and status display.
+  - Automates pairing: add host, generate/send PIN after a delay, retry mismatches, and close on success.
 - app/res/cloud.svg
   - Cloud icon used by the new toolbar button.
 - clean_rebuild.sh
@@ -43,7 +46,3 @@
 - clean_rebuild.bat
   - Adds a Windows clean rebuild script that bootstraps the VS toolchain/Qt bin path and rebuilds using `qmake` plus `jom`/`nmake`.
   - Copies runtime DLLs from `libs/windows/lib/x64` plus `AntiHooking.dll` into the build output so the release exe has required dependencies (SDL2, SDL2_ttf, etc.).
-
-## Removed
-- build_with_vs_env.bat
-  - Removed the now-redundant VS environment wrapper script since `clean_rebuild.bat` handles setup.

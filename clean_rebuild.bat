@@ -65,17 +65,27 @@ if !ERRORLEVEL! NEQ 0 (
     )
 )
 
-rem Locate qmake (prefer qmake.bat)
-where qmake.bat >nul 2>&1
+rem Locate qmake (prefer qmake6 if available)
+where qmake6.bat >nul 2>&1
 if !ERRORLEVEL! EQU 0 (
-    set "QMAKE_CMD=qmake.bat"
+    set "QMAKE_CMD=qmake6.bat"
 ) else (
-    where qmake.exe >nul 2>&1
+    where qmake6.exe >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
-        set "QMAKE_CMD=qmake.exe"
+        set "QMAKE_CMD=qmake6.exe"
     ) else (
-        echo Unable to find QMake. Did you add Qt bin to your PATH?
-        goto Error
+        where qmake.bat >nul 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            set "QMAKE_CMD=qmake.bat"
+        ) else (
+            where qmake.exe >nul 2>&1
+            if !ERRORLEVEL! EQU 0 (
+                set "QMAKE_CMD=qmake.exe"
+            ) else (
+                echo Unable to find QMake. Did you add Qt bin to your PATH?
+                goto Error
+            )
+        )
     )
 )
 

@@ -52,7 +52,7 @@
 #include "streaming/session.h"
 #include "settings/streamingpreferences.h"
 #include "gui/sdlgamepadkeynavigation.h"
-#include "clouddeckmanager.h"
+#include "clouddeckmanagerapi.h"
 
 #if defined(Q_OS_WIN32)
 #define IS_UNSPECIFIED_HANDLE(x) ((x) == INVALID_HANDLE_VALUE || (x) == NULL)
@@ -832,11 +832,11 @@ int main(int argc, char *argv[])
                                               [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {
                                                   return new ComputerManager(StreamingPreferences::get(qmlEngine));
                                               });
-    qmlRegisterSingletonType<CloudDeckManager>("CloudDeckManager", 1, 0,
-                                               "CloudDeckManager",
-                                               [](QQmlEngine*, QJSEngine*) -> QObject* {
-                                                   return new CloudDeckManager();
-                                               });
+    qmlRegisterSingletonType<CloudDeckManagerApi>("CloudDeckManagerApi", 1, 0,
+                                                  "CloudDeckManagerApi",
+                                                  [](QQmlEngine*, QJSEngine*) -> QObject* {
+                                                      return new CloudDeckManagerApi();
+                                                  });
     qmlRegisterSingletonType<AutoUpdateChecker>("AutoUpdateChecker", 1, 0,
                                                 "AutoUpdateChecker",
                                                 [](QQmlEngine*, QJSEngine*) -> QObject* {
