@@ -265,6 +265,13 @@ Item {
                 return
             }
 
+            var normalizedStatus = status ? status.toLowerCase() : ""
+            if (normalizedStatus !== "running") {
+                // Ignore stale last_started values while CloudDeck reports a non-running state.
+                // Keep waiting for a running transition; timeout/failure handlers provide fallback.
+                return
+            }
+
             applyCloudDeckSessionTimerAndStart(lastStarted > 0 ? lastStarted : 0)
         }
 

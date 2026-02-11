@@ -12,14 +12,20 @@
   - Splits generic host details, CloudDeck credentials/Sunshine defaults, and timer configuration into separate focused dialogs.
   - Keeps the session timer controls compact with tighter spacing and smaller numeric inputs.
   - Defaults are now: `Only show before end`, `5` minutes remaining, and hourly reminder enabled for `5` seconds.
+- app/gui/CloudDeckDialog.qml
+  - Guards CloudDeck startup/pairing signal handlers against stale async callbacks after flow reset/close.
+  - Adds validation before start commands to avoid empty machine/token command attempts.
+  - Normalizes machine-status string parsing and validates `public_ip` before manual host add, preventing crash-prone empty/invalid host submissions.
 - app/gui/StreamSegue.qml
   - Adds one-shot CloudDeck `last_started` resolution before `session.start()` (login/machineId/status chain only when needed).
   - Applies fetched start timestamp and all timer display preferences to `Session` once, with timeout/fallback behavior and no polling during stream.
+  - Ignores `last_started` values unless CloudDeck status is `running`, preventing stale timestamps during startup transitions.
 - app/gui/main.qml
   - Updates the Add PC dialog to offer credential login vs manual entry and removes the separate CloudDeck toolbar button.
 - app/gui/computermodel.cpp
   - Adds `findComputerByManualAddress()` helper to resolve a host by manual address for CloudDeck pairing flow.
   - Exposes active/manual address strings for CloudDeck host detection in QML.
+  - Adds an index safety guard in `handleComputerStateChanged()` to avoid emitting `dataChanged()` with an invalid model index when stale pointers arrive.
 - app/gui/computermodel.h
   - Declares the new `findComputerByManualAddress()` QML‑invokable method.
   - Adds QML roles for active/manual addresses.
@@ -29,6 +35,7 @@
   - Polls machine status during transitions and caches password/public IP/timestamps for the UI.
   - Adds persisted CloudDeck timer preferences with validation: hours, visibility mode, before-end minutes, hourly reminder enabled flag, and hourly reminder seconds.
   - Sets defaults to before-end visibility with `5` minute threshold and hourly reminder enabled.
+  - Treats machine-command HTTP `409` conflict responses during active transitions as transient and keeps polling state instead of surfacing a hard failure.
 - clouddeck/clouddeckmanagerapi.h
   - Declares CloudDeck REST API surface, token expiry helpers, and machine metadata accessors for QML.
   - Declares CloudDeck timer preference getters/setters for QML usage.

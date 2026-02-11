@@ -4,6 +4,7 @@
 - app/app.pro
 - app/main.cpp
 - app/gui/PcView.qml
+- app/gui/CloudDeckDialog.qml
 - app/gui/StreamSegue.qml
 - app/gui/main.qml
 - app/gui/computermodel.cpp
@@ -42,3 +43,7 @@
 - Split right-click options into three views: `View Details`, `CloudDeck Settings`, and `Session Timer Settings` for CloudDeck hosts.
 - Refactored CloudDeck/session timer dialogs to a more compact design.
 - Set defaults to `Only show before end` at `5` minutes and `Show each hour passed` enabled for `5` seconds.
+- Hardened CloudDeck start/session-timer flow to avoid stale callback races while instances are still `starting`.
+- Handled CloudDeck machine-command `409` conflicts during restart/transition as non-fatal and continued polling instead of failing the flow.
+- Guarded CloudDeck pairing against invalid/empty `public_ip` responses and normalized status parsing to avoid QML runtime crashes.
+- Added a safety guard in `ComputerModel::handleComputerStateChanged()` for stale computer pointers to prevent invalid `dataChanged()` index emissions.

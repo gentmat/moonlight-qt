@@ -276,6 +276,12 @@ void ComputerModel::handleComputerStateChanged(NvComputer* computer)
     else {
         // Let the view know that this specific computer changed
         int index = m_Computers.indexOf(computer);
+        if (index < 0) {
+            beginResetModel();
+            m_Computers = newComputerList;
+            endResetModel();
+            return;
+        }
         emit dataChanged(createIndex(index, 0), createIndex(index, 0));
     }
 }

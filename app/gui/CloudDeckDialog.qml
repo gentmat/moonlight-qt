@@ -67,6 +67,10 @@ NavigableDialog {
         successCloseTimer.stop()
     }
 
+    function isFlowActive() {
+        return busy && (pairingFlowInProgress || manualStartInProgress)
+    }
+
     function startPairing() {
         var emailValue = emailField.text.trim()
         if (emailValue.length === 0 || passwordField.text.length === 0) {
@@ -153,6 +157,24 @@ NavigableDialog {
                lower.indexOf("did not match") >= 0 ||
                lower.indexOf("mismatch") >= 0 ||
                lower.indexOf("invalid") >= 0
+    }
+
+    function normalizeHostAddress(address) {
+        if (address === undefined || address === null) {
+            return ""
+        }
+        return String(address).trim()
+    }
+
+    function isValidHostAddress(address) {
+        var normalized = normalizeHostAddress(address)
+        if (normalized.length === 0) {
+            return false
+        }
+        if (normalized.indexOf(" ") >= 0 || normalized.indexOf("/") >= 0) {
+            return false
+        }
+        return true
     }
 
     function schedulePairingRetry(message) {
@@ -250,6 +272,10 @@ NavigableDialog {
         target: CloudDeckManagerApi
 
         function onLoginCompleted(status, accessTokenValue, expiresIn, idToken, refreshToken, tokenType, errorCode, errorMessage, challengeName, challengeParameters) {
+            if (!busy) {
+                return
+            }
+
             if (status !== CloudDeckManagerApi.AuthSuccess) {
                 failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
                 return
@@ -263,8 +289,17 @@ NavigableDialog {
         }
 
         function onMachineIdFetched(success, machineIdValue, errorCode, errorMessage) {
+            if (!isFlowActive()) {
+                return
+            }
+
             if (!success) {
                 failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
+                return
+            }
+
+            if (machineIdValue.length === 0) {
+                failWithError(qsTr("CloudDeck machine ID is missing. Please try again."))
                 return
             }
 
@@ -274,17 +309,25 @@ NavigableDialog {
         }
 
         function onMachineStatusUpdated(status, publicIp, password, lastStarted, createdAt) {
-            var lowerStatus = status.toLowerCase()
+            if (!isFlowActive()) {
+                return
+            }
+
+            var lowerStatus = status ? String(status).toLowerCase() : ""
 
             if (lowerStatus === "running") {
                 if (pairingFlowInProgress) {
                     if (awaitingAddComplete) {
                         return
                     }
-                    pendingAddress = publicIp
-                    statusText = qsTr("Found CloudDeck host %1. Adding to Moonlight...").arg(publicIp)
+                    if (!isValidHostAddress(publicIp)) {
+                        failWithError(qsTr("CloudDeck returned an invalid host address. Please try again."))
+                        return
+                    }
+                    pendingAddress = normalizeHostAddress(publicIp)
+                    statusText = qsTr("Found CloudDeck host %1. Adding to Moonlight...").arg(pendingAddress)
                     awaitingAddComplete = true
-                    ComputerManager.addNewHostManually(publicIp)
+                    ComputerManager.addNewHostManually(pendingAddress)
                 } else if (manualStartInProgress) {
                     statusText = qsTr("CloudDeck instance is running.")
                     manualStartInProgress = false
@@ -300,6 +343,11 @@ NavigableDialog {
                     statusText = qsTr("Instance is starting...")
                 }
                 if (!startIssued) {
+                    if (machineId.length === 0 || accessToken.length === 0) {
+                        failWithError(qsTr("Missing CloudDeck session data. Please try again."))
+                        return
+                    }
+
                     startIssued = true
                     CloudDeckManagerApi.startMachine(machineId, accessToken)
                 }
@@ -310,10 +358,18 @@ NavigableDialog {
         }
 
         function onMachineStatusFailed(errorCode, errorMessage) {
+            if (!isFlowActive()) {
+                return
+            }
+
             failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
         }
 
         function onMachineStartFinished(success, status, errorCode, errorMessage) {
+            if (!isFlowActive()) {
+                return
+            }
+
             if (!success) {
                 failWithError(errorMessage.length > 0 ? errorMessage : errorCode)
             }

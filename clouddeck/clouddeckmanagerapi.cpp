@@ -1061,6 +1061,20 @@ void CloudDeckManagerApi::handleMachineCommandReply()
         return;
     }
 
+    // A 409 conflict during start/stop commonly means the machine is already
+    // transitioning (e.g. reboot/start in progress). Qt may surface this with
+    // a content-conflict network error, so key off HTTP status and keep polling.
+    if (statusCode == 409 && m_machineAction != MachineNone) {
+        m_transitionCheckCount = 0;
+        if (!m_machinePollTimer->isActive()) {
+            m_machinePollTimer->start();
+        }
+        if (!m_machineId.isEmpty() && !m_machineAccessToken.isEmpty() && !m_machineStatusReply) {
+            fetchMachineStatus(m_machineId, m_machineAccessToken);
+        }
+        return;
+    }
+
     QString errorCode;
     QString errorMessage;
     if (!body.isEmpty()) {
