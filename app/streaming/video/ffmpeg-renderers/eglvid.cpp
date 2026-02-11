@@ -209,6 +209,11 @@ void EGLRenderer::renderOverlay(Overlay::OverlayType type, int viewportWidth, in
             overlayRect.x = 0;
             overlayRect.y = 0;
         }
+        else if (type == Overlay::OverlaySessionTimer) {
+            // Top center
+            overlayRect.x = (viewportWidth - newSurface->w) / 2.0f;
+            overlayRect.y = viewportHeight - newSurface->h;
+        }
         else if (type == Overlay::OverlayDebug) {
             // Top left
             overlayRect.x = 0;

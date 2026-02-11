@@ -4,6 +4,7 @@ import QtQuick.Window 2.2
 
 import SdlGamepadKeyNavigation 1.0
 import Session 1.0
+import CloudDeckManagerApi 1.0
 
 Item {
     property Session session
@@ -12,6 +13,73 @@ Item {
                                            qsTr("Starting %1...").arg(appName)
     property bool isResume : false
     property bool quitAfter : false
+    property bool sessionStartQueued : false
+    property bool cloudDeckLastStartedFetchInProgress : false
+
+    function queueSessionStart()
+    {
+        if (sessionStartQueued) {
+            return
+        }
+
+        sessionStartQueued = true
+        startSessionTimer.start()
+    }
+
+    function applyCloudDeckSessionTimerAndStart(lastStartedMs)
+    {
+        cloudDeckFetchTimeout.stop()
+        cloudDeckLastStartedFetchInProgress = false
+
+        session.setCloudDeckSessionTimerConfig(
+            lastStartedMs,
+            CloudDeckManagerApi.getSessionTimerHours(),
+            CloudDeckManagerApi.getSessionTimerDisplayMode(),
+            CloudDeckManagerApi.getSessionTimerWarnMinutes(),
+            CloudDeckManagerApi.getSessionTimerHourlyReminderEnabled(),
+            CloudDeckManagerApi.getSessionTimerHourlyReminderSeconds())
+        queueSessionStart()
+    }
+
+    function prepareCloudDeckSessionTimer()
+    {
+        // Default to disabled unless we can resolve a CloudDeck-backed session.
+        session.setCloudDeckSessionTimerConfig(
+            0,
+            CloudDeckManagerApi.getSessionTimerHours(),
+            CloudDeckManagerApi.getSessionTimerDisplayMode(),
+            CloudDeckManagerApi.getSessionTimerWarnMinutes(),
+            CloudDeckManagerApi.getSessionTimerHourlyReminderEnabled(),
+            CloudDeckManagerApi.getSessionTimerHourlyReminderSeconds())
+
+        if (!CloudDeckManagerApi.isCloudDeckHost(session.hostAddress())) {
+            queueSessionStart()
+            return
+        }
+
+        if (!CloudDeckManagerApi.hasStoredCredentials()) {
+            queueSessionStart()
+            return
+        }
+
+        cloudDeckLastStartedFetchInProgress = true
+        cloudDeckFetchTimeout.start()
+
+        var token = CloudDeckManagerApi.accessToken()
+        if (token.length === 0 || CloudDeckManagerApi.isAccessTokenExpired()) {
+            CloudDeckManagerApi.loginWithCredentials(CloudDeckManagerApi.getStoredEmail(),
+                                                     CloudDeckManagerApi.getStoredPassword())
+            return
+        }
+
+        var machineId = CloudDeckManagerApi.machineId()
+        if (machineId.length > 0) {
+            CloudDeckManagerApi.fetchMachineStatus(machineId, token)
+        }
+        else {
+            CloudDeckManagerApi.fetchMachineId(token)
+        }
+    }
 
     function stageStarting(stage)
     {
@@ -110,6 +178,8 @@ Item {
     StackView.onActivated: {
         // Hide the toolbar before we start loading
         toolBar.visible = false
+        sessionStartQueued = false
+        cloudDeckLastStartedFetchInProgress = false
 
         // Hook up our signals
         session.stageStarting.connect(stageStarting)
@@ -147,6 +217,63 @@ Item {
 
             // Run the streaming session to completion
             session.start()
+        }
+    }
+
+    Timer {
+        id: cloudDeckFetchTimeout
+        interval: 5000
+        repeat: false
+        onTriggered: {
+            if (cloudDeckLastStartedFetchInProgress) {
+                applyCloudDeckSessionTimerAndStart(0)
+            }
+        }
+    }
+
+    Connections {
+        target: CloudDeckManagerApi
+
+        function onLoginCompleted(status, accessTokenValue, expiresIn, idToken, refreshToken, tokenType, errorCode, errorMessage, challengeName, challengeParameters) {
+            if (!cloudDeckLastStartedFetchInProgress) {
+                return
+            }
+
+            if (status !== CloudDeckManagerApi.AuthSuccess || accessTokenValue.length === 0) {
+                applyCloudDeckSessionTimerAndStart(0)
+                return
+            }
+
+            CloudDeckManagerApi.fetchMachineId(accessTokenValue)
+        }
+
+        function onMachineIdFetched(success, machineIdValue, errorCode, errorMessage) {
+            if (!cloudDeckLastStartedFetchInProgress) {
+                return
+            }
+
+            if (!success || machineIdValue.length === 0) {
+                applyCloudDeckSessionTimerAndStart(0)
+                return
+            }
+
+            CloudDeckManagerApi.fetchMachineStatus(machineIdValue, CloudDeckManagerApi.accessToken())
+        }
+
+        function onMachineStatusUpdated(status, publicIp, password, lastStarted, createdAt) {
+            if (!cloudDeckLastStartedFetchInProgress) {
+                return
+            }
+
+            applyCloudDeckSessionTimerAndStart(lastStarted > 0 ? lastStarted : 0)
+        }
+
+        function onMachineStatusFailed(errorCode, errorMessage) {
+            if (!cloudDeckLastStartedFetchInProgress) {
+                return
+            }
+
+            applyCloudDeckSessionTimerAndStart(0)
         }
     }
 
@@ -196,8 +323,8 @@ Item {
                 startSessionTimer.interval = toast.timeout + 500;
             }
 
-            // Start the timer to wait for toasts (or start the session immediately)
-            startSessionTimer.start()
+            // Fetch CloudDeck session timing (if applicable) before we start streaming.
+            prepareCloudDeckSessionTimer()
         }
 
         sourceComponent: Item {}

@@ -7,7 +7,14 @@
   - Registers `CloudDeckManagerApi` as a QML singleton for CloudDeck API access.
 - app/gui/PcView.qml
   - Adds CloudDeck-aware context menu actions and a richer PC details dialog with CloudDeck credentials and Sunshine defaults.
+  - Adds three dedicated right-click views for CloudDeck hosts: `View Details`, `CloudDeck Settings`, and `Session Timer Settings`.
   - Restores normal click-to-pair behavior; CloudDeck pairing is handled in the dialog flow.
+  - Splits generic host details, CloudDeck credentials/Sunshine defaults, and timer configuration into separate focused dialogs.
+  - Keeps the session timer controls compact with tighter spacing and smaller numeric inputs.
+  - Defaults are now: `Only show before end`, `5` minutes remaining, and hourly reminder enabled for `5` seconds.
+- app/gui/StreamSegue.qml
+  - Adds one-shot CloudDeck `last_started` resolution before `session.start()` (login/machineId/status chain only when needed).
+  - Applies fetched start timestamp and all timer display preferences to `Session` once, with timeout/fallback behavior and no polling during stream.
 - app/gui/main.qml
   - Updates the Add PC dialog to offer credential login vs manual entry and removes the separate CloudDeck toolbar button.
 - app/gui/computermodel.cpp
@@ -20,8 +27,42 @@
   - Implements CloudDeck REST/Cognito flows (login, GetUser, account lookup, machine status/start/stop, add client).
   - Tracks access-token expiry time and exposes seconds-remaining/expired helpers to QML.
   - Polls machine status during transitions and caches password/public IP/timestamps for the UI.
+  - Adds persisted CloudDeck timer preferences with validation: hours, visibility mode, before-end minutes, hourly reminder enabled flag, and hourly reminder seconds.
+  - Sets defaults to before-end visibility with `5` minute threshold and hourly reminder enabled.
 - clouddeck/clouddeckmanagerapi.h
   - Declares CloudDeck REST API surface, token expiry helpers, and machine metadata accessors for QML.
+  - Declares CloudDeck timer preference getters/setters for QML usage.
+- app/streaming/session.h
+  - Adds QML invokables for current host address and full CloudDeck timer configuration.
+  - Adds internal state for timer display mode, before-end threshold, and hourly reminder windows.
+- app/streaming/session.cpp
+  - Computes elapsed session age from CloudDeck `last_started` against current UTC time and updates a live in-stream counter.
+  - Implements timer visibility modes: always visible, before-end countdown, and hidden.
+  - Implements optional hourly reminder popups (shown for configurable seconds at each full elapsed hour) without extra API calls.
+- app/streaming/video/overlaymanager.h
+  - Adds a new overlay type for the CloudDeck session timer.
+- app/streaming/video/overlaymanager.cpp
+  - Defines styling for the new session timer overlay (font/color).
+- app/streaming/video/ffmpeg-renderers/sdlvid.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/dxva2.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/d3d11va.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/eglvid.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/drm.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/vdpau.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/vaapi.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/plvk.cpp
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/vt_metal.mm
+  - Positions the session timer overlay at top-center.
+- app/streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm
+  - Sets session timer text alignment to centered.
 - app/qml.qrc
   - Registers `CloudDeckDialog.qml` in the QML resource list.
 - app/resources.qrc

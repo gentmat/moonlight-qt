@@ -53,6 +53,8 @@
 #include <QGuiApplication>
 #include <QCursor>
 #include <QScreen>
+#include <QDateTime>
+#include <QReadLocker>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QQuickOpenGLUtils>
@@ -580,7 +582,16 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_OpusDecoder(nullptr),
       m_AudioRenderer(nullptr),
       m_AudioSampleCount(0),
-      m_DropAudioEndTime(0)
+      m_DropAudioEndTime(0),
+      m_CloudDeckSessionStartMs(0),
+      m_CloudDeckSessionDurationMs(0),
+      m_CloudDeckSessionDisplayMode(CloudDeckTimerDisplayBeforeEnd),
+      m_CloudDeckSessionWarnBeforeMs(5 * 60 * 1000),
+      m_CloudDeckSessionHourlyReminderEnabled(true),
+      m_CloudDeckSessionHourlyReminderDurationMs(5 * 1000),
+      m_CloudDeckSessionHourlyReminderVisibleUntilMs(0),
+      m_CloudDeckSessionLastHourReminderIndex(0),
+      m_LastCloudDeckOverlayUpdateTicks(0)
 {
 }
 
@@ -1783,6 +1794,159 @@ void Session::interrupt()
     SDL_PushEvent(&event);
 }
 
+QString Session::hostAddress() const
+{
+    if (m_Computer == nullptr) {
+        return QString();
+    }
+
+    QReadLocker lock(&m_Computer->lock);
+    const QString manualAddress = m_Computer->manualAddress.address();
+    if (!manualAddress.isEmpty()) {
+        return manualAddress;
+    }
+
+    return m_Computer->activeAddress.address();
+}
+
+void Session::setCloudDeckSessionTimerConfig(qint64 lastStartedMs,
+                                             int sessionHours,
+                                             int displayMode,
+                                             int warnBeforeEndMinutes,
+                                             bool showHourlyReminder,
+                                             int hourlyReminderSeconds)
+{
+    static const qint64 kMillisecondsPerHour = 60 * 60 * 1000;
+
+    m_CloudDeckSessionStartMs = lastStartedMs > 0 ? lastStartedMs : 0;
+
+    if (sessionHours > 0) {
+        m_CloudDeckSessionDurationMs = static_cast<qint64>(sessionHours) * kMillisecondsPerHour;
+    } else {
+        m_CloudDeckSessionDurationMs = 0;
+    }
+
+    if (displayMode < CloudDeckTimerDisplayAlways || displayMode > CloudDeckTimerDisplayHidden) {
+        m_CloudDeckSessionDisplayMode = CloudDeckTimerDisplayBeforeEnd;
+    } else {
+        m_CloudDeckSessionDisplayMode = displayMode;
+    }
+
+    if (warnBeforeEndMinutes < 1) {
+        warnBeforeEndMinutes = 5;
+    } else if (warnBeforeEndMinutes > 120) {
+        warnBeforeEndMinutes = 120;
+    }
+    m_CloudDeckSessionWarnBeforeMs = static_cast<qint64>(warnBeforeEndMinutes) * 60 * 1000;
+
+    if (hourlyReminderSeconds < 1) {
+        hourlyReminderSeconds = 5;
+    } else if (hourlyReminderSeconds > 60) {
+        hourlyReminderSeconds = 60;
+    }
+    m_CloudDeckSessionHourlyReminderEnabled = showHourlyReminder;
+    m_CloudDeckSessionHourlyReminderDurationMs = static_cast<qint64>(hourlyReminderSeconds) * 1000;
+    m_CloudDeckSessionHourlyReminderVisibleUntilMs = 0;
+
+    if (m_CloudDeckSessionStartMs > 0) {
+        qint64 initialElapsedMs = QDateTime::currentMSecsSinceEpoch() - m_CloudDeckSessionStartMs;
+        if (initialElapsedMs < 0) {
+            initialElapsedMs = 0;
+        }
+        if (m_CloudDeckSessionDurationMs > 0 && initialElapsedMs > m_CloudDeckSessionDurationMs) {
+            initialElapsedMs = m_CloudDeckSessionDurationMs;
+        }
+        m_CloudDeckSessionLastHourReminderIndex = initialElapsedMs / kMillisecondsPerHour;
+    } else {
+        m_CloudDeckSessionLastHourReminderIndex = 0;
+    }
+
+    m_LastCloudDeckOverlayUpdateTicks = 0;
+}
+
+QString Session::formatCloudDeckDuration(qint64 milliseconds) const
+{
+    const qint64 totalSeconds = qMax<qint64>(0, milliseconds / 1000);
+    const qint64 hours = totalSeconds / 3600;
+    const qint64 minutes = (totalSeconds % 3600) / 60;
+    const qint64 seconds = totalSeconds % 60;
+
+    return QString("%1:%2:%3")
+            .arg(hours, 2, 10, QLatin1Char('0'))
+            .arg(minutes, 2, 10, QLatin1Char('0'))
+            .arg(seconds, 2, 10, QLatin1Char('0'));
+}
+
+void Session::updateCloudDeckSessionTimerOverlay(bool forceUpdate)
+{
+    static const qint64 kMillisecondsPerHour = 60 * 60 * 1000;
+
+    if (m_CloudDeckSessionStartMs <= 0 || m_CloudDeckSessionDurationMs <= 0) {
+        return;
+    }
+
+    const Uint32 currentTicks = SDL_GetTicks();
+    if (!forceUpdate && !SDL_TICKS_PASSED(currentTicks, m_LastCloudDeckOverlayUpdateTicks + 1000)) {
+        return;
+    }
+    m_LastCloudDeckOverlayUpdateTicks = currentTicks;
+
+    const qint64 currentTimeMs = QDateTime::currentMSecsSinceEpoch();
+    qint64 elapsedMs = currentTimeMs - m_CloudDeckSessionStartMs;
+    if (elapsedMs < 0) {
+        elapsedMs = 0;
+    }
+    if (elapsedMs > m_CloudDeckSessionDurationMs) {
+        elapsedMs = m_CloudDeckSessionDurationMs;
+    }
+
+    const qint64 remainingMs = qMax<qint64>(0, m_CloudDeckSessionDurationMs - elapsedMs);
+
+    bool shouldShowOverlay = false;
+    QString overlayText;
+
+    if (m_CloudDeckSessionDisplayMode == CloudDeckTimerDisplayAlways) {
+        shouldShowOverlay = true;
+        overlayText = tr("Session timer: %1 / %2")
+                          .arg(formatCloudDeckDuration(elapsedMs))
+                          .arg(formatCloudDeckDuration(m_CloudDeckSessionDurationMs));
+    } else if (m_CloudDeckSessionDisplayMode == CloudDeckTimerDisplayBeforeEnd &&
+               remainingMs <= m_CloudDeckSessionWarnBeforeMs) {
+        shouldShowOverlay = true;
+        overlayText = tr("Session ends in: %1").arg(formatCloudDeckDuration(remainingMs));
+    }
+
+    if (m_CloudDeckSessionHourlyReminderEnabled && m_CloudDeckSessionHourlyReminderDurationMs > 0) {
+        const qint64 elapsedHours = elapsedMs / kMillisecondsPerHour;
+        if (elapsedHours > m_CloudDeckSessionLastHourReminderIndex && elapsedHours > 0) {
+            m_CloudDeckSessionLastHourReminderIndex = elapsedHours;
+            m_CloudDeckSessionHourlyReminderVisibleUntilMs = currentTimeMs + m_CloudDeckSessionHourlyReminderDurationMs;
+        }
+
+        if (!shouldShowOverlay &&
+            m_CloudDeckSessionHourlyReminderVisibleUntilMs > currentTimeMs &&
+            elapsedHours > 0) {
+            shouldShowOverlay = true;
+            overlayText = tr("Session passed: %1")
+                              .arg(formatCloudDeckDuration(elapsedHours * kMillisecondsPerHour));
+        }
+    }
+
+    if (!shouldShowOverlay) {
+        if (m_OverlayManager.isOverlayEnabled(Overlay::OverlaySessionTimer)) {
+            m_OverlayManager.setOverlayState(Overlay::OverlaySessionTimer, false);
+        }
+        return;
+    }
+
+    if (!m_OverlayManager.isOverlayEnabled(Overlay::OverlaySessionTimer)) {
+        m_OverlayManager.setOverlayState(Overlay::OverlaySessionTimer, true);
+    }
+
+    const QByteArray overlayTextUtf8 = overlayText.toUtf8();
+    m_OverlayManager.updateOverlayText(Overlay::OverlaySessionTimer, overlayTextUtf8.constData());
+}
+
 void Session::exec()
 {
     // If the connection failed, clean up and abort the connection.
@@ -1995,6 +2159,17 @@ void Session::exec()
     // Toggle the stats overlay if requested by the user
     m_OverlayManager.setOverlayState(Overlay::OverlayDebug, m_Preferences->showPerformanceOverlay);
 
+    const bool hasCloudDeckSessionTimer =
+#ifdef STEAM_LINK
+        false;
+#else
+        m_CloudDeckSessionStartMs > 0 && m_CloudDeckSessionDurationMs > 0;
+#endif
+    m_OverlayManager.setOverlayState(Overlay::OverlaySessionTimer, false);
+    if (hasCloudDeckSessionTimer) {
+        updateCloudDeckSessionTimerOverlay(true);
+    }
+
     // Switch to async logging mode when we enter the SDL loop
     StreamUtils::enterAsyncLoggingMode();
 
@@ -2002,6 +2177,8 @@ void Session::exec()
     // because we want to suspend all Qt processing until the stream is over.
     SDL_Event event;
     for (;;) {
+        updateCloudDeckSessionTimerOverlay();
+
 #if SDL_VERSION_ATLEAST(2, 0, 18) && !defined(STEAM_LINK)
         // SDL 2.0.18 has a proper wait event implementation that uses platform
         // support to block on events rather than polling on Windows, macOS, X11,
@@ -2347,6 +2524,8 @@ void Session::exec()
     }
 
 DispatchDeferredCleanup:
+    m_OverlayManager.setOverlayState(Overlay::OverlaySessionTimer, false);
+
     // Switch back to synchronous logging mode
     StreamUtils::exitAsyncLoggingMode();
 

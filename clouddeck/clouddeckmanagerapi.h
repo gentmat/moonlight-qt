@@ -53,6 +53,16 @@ public:
     Q_INVOKABLE QString getStoredServerAddress() const;
     Q_INVOKABLE QString getStoredEmail() const;
     Q_INVOKABLE QString getStoredPassword() const;
+    Q_INVOKABLE int getSessionTimerHours() const;
+    Q_INVOKABLE void setSessionTimerHours(int hours);
+    Q_INVOKABLE int getSessionTimerDisplayMode() const;
+    Q_INVOKABLE void setSessionTimerDisplayMode(int mode);
+    Q_INVOKABLE int getSessionTimerWarnMinutes() const;
+    Q_INVOKABLE void setSessionTimerWarnMinutes(int minutes);
+    Q_INVOKABLE bool getSessionTimerHourlyReminderEnabled() const;
+    Q_INVOKABLE void setSessionTimerHourlyReminderEnabled(bool enabled);
+    Q_INVOKABLE int getSessionTimerHourlyReminderSeconds() const;
+    Q_INVOKABLE void setSessionTimerHourlyReminderSeconds(int seconds);
     Q_INVOKABLE bool isCloudDeckHost(const QString &hostAddress) const;
     Q_INVOKABLE QString machineId() const;
     Q_INVOKABLE void fetchMachineId(const QString &accessToken);

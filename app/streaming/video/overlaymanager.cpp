@@ -12,6 +12,9 @@ OverlayManager::OverlayManager() :
     m_Overlays[OverlayType::OverlayDebug].color = {0xD0, 0xD0, 0x00, 0xFF};
     m_Overlays[OverlayType::OverlayDebug].fontSize = 20;
 
+    m_Overlays[OverlayType::OverlaySessionTimer].color = {0xF0, 0xF0, 0xF0, 0xFF};
+    m_Overlays[OverlayType::OverlaySessionTimer].fontSize = 24;
+
     m_Overlays[OverlayType::OverlayStatusUpdate].color = {0xCC, 0x00, 0x00, 0xFF};
     m_Overlays[OverlayType::OverlayStatusUpdate].fontSize = 36;
 

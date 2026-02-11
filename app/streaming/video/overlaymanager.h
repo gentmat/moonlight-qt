@@ -9,6 +9,7 @@ namespace Overlay {
 
 enum OverlayType {
     OverlayDebug,
+    OverlaySessionTimer,
     OverlayStatusUpdate,
     OverlayMax
 };
