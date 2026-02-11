@@ -104,6 +104,13 @@ public:
     Q_INVOKABLE bool initialize(QQuickWindow* qtWindow);
     Q_INVOKABLE void start();
     Q_INVOKABLE void interrupt();
+    Q_INVOKABLE QString hostAddress() const;
+    Q_INVOKABLE void setCloudDeckSessionTimerConfig(qint64 lastStartedMs,
+                                                    int sessionHours,
+                                                    int displayMode,
+                                                    int warnBeforeEndMinutes,
+                                                    bool showHourlyReminder,
+                                                    int hourlyReminderSeconds);
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
 
     static
@@ -170,6 +177,15 @@ private:
     void notifyMouseEmulationMode(bool enabled);
 
     void updateOptimalWindowDisplayMode();
+
+    void updateCloudDeckSessionTimerOverlay(bool forceUpdate = false);
+    QString formatCloudDeckDuration(qint64 milliseconds) const;
+
+    enum CloudDeckTimerDisplayMode {
+        CloudDeckTimerDisplayAlways = 0,
+        CloudDeckTimerDisplayBeforeEnd = 1,
+        CloudDeckTimerDisplayHidden = 2
+    };
 
     enum class DecoderAvailability {
         None,
@@ -280,6 +296,15 @@ private:
     Uint32 m_DropAudioEndTime;
 
     Overlay::OverlayManager m_OverlayManager;
+    qint64 m_CloudDeckSessionStartMs;
+    qint64 m_CloudDeckSessionDurationMs;
+    int m_CloudDeckSessionDisplayMode;
+    qint64 m_CloudDeckSessionWarnBeforeMs;
+    bool m_CloudDeckSessionHourlyReminderEnabled;
+    qint64 m_CloudDeckSessionHourlyReminderDurationMs;
+    qint64 m_CloudDeckSessionHourlyReminderVisibleUntilMs;
+    qint64 m_CloudDeckSessionLastHourReminderIndex;
+    Uint32 m_LastCloudDeckOverlayUpdateTicks;
 
     static CONNECTION_LISTENER_CALLBACKS k_ConnCallbacks;
     static Session* s_ActiveSession;

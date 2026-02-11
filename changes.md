@@ -4,9 +4,26 @@
 - app/app.pro
 - app/main.cpp
 - app/gui/PcView.qml
+- app/gui/StreamSegue.qml
 - app/gui/main.qml
 - app/gui/computermodel.cpp
 - app/gui/computermodel.h
+- app/streaming/session.cpp
+- app/streaming/session.h
+- app/streaming/video/overlaymanager.cpp
+- app/streaming/video/overlaymanager.h
+- app/streaming/video/ffmpeg-renderers/d3d11va.cpp
+- app/streaming/video/ffmpeg-renderers/drm.cpp
+- app/streaming/video/ffmpeg-renderers/dxva2.cpp
+- app/streaming/video/ffmpeg-renderers/eglvid.cpp
+- app/streaming/video/ffmpeg-renderers/plvk.cpp
+- app/streaming/video/ffmpeg-renderers/sdlvid.cpp
+- app/streaming/video/ffmpeg-renderers/vaapi.cpp
+- app/streaming/video/ffmpeg-renderers/vdpau.cpp
+- app/streaming/video/ffmpeg-renderers/vt_avsamplelayer.mm
+- app/streaming/video/ffmpeg-renderers/vt_metal.mm
+- clouddeck/clouddeckmanagerapi.cpp
+- clouddeck/clouddeckmanagerapi.h
 - app/qml.qrc
 - app/resources.qrc
 - changes.md
@@ -20,3 +37,8 @@
 - app/res/cloud.svg
 - clean_rebuild.sh
 - clean_rebuild.bat
+
+## Recent updates
+- Split right-click options into three views: `View Details`, `CloudDeck Settings`, and `Session Timer Settings` for CloudDeck hosts.
+- Refactored CloudDeck/session timer dialogs to a more compact design.
+- Set defaults to `Only show before end` at `5` minutes and `Show each hour passed` enabled for `5` seconds.

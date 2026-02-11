@@ -249,6 +249,24 @@ CenteredGridView {
                         showPcDetailsDialog.open()
                     }
                 }
+                NavigableMenuItem {
+                    text: qsTr("CloudDeck Settings")
+                    visible: cloudDeckHostKnown
+                    onTriggered: {
+                        cloudDeckSettingsDialog.manualAddress = model.manualAddress
+                        cloudDeckSettingsDialog.activeAddress = model.activeAddress
+                        cloudDeckSettingsDialog.open()
+                    }
+                }
+                NavigableMenuItem {
+                    text: qsTr("Session Timer Settings")
+                    visible: cloudDeckHostKnown
+                    onTriggered: {
+                        sessionTimerSettingsDialog.manualAddress = model.manualAddress
+                        sessionTimerSettingsDialog.activeAddress = model.activeAddress
+                        sessionTimerSettingsDialog.open()
+                    }
+                }
             }
         }
 
@@ -439,6 +457,42 @@ CenteredGridView {
         property string pcDetails: ""
         property string manualAddress: ""
         property string activeAddress: ""
+        title: qsTr("View Details")
+
+        contentItem: ColumnLayout {
+            spacing: 8
+            implicitWidth: 520
+
+            Label {
+                text: showPcDetailsDialog.pcDetails
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                visible: text.length > 0
+            }
+
+            Label {
+                text: qsTr("Manual address: %1").arg(showPcDetailsDialog.manualAddress.length > 0 ? showPcDetailsDialog.manualAddress : qsTr("N/A"))
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+
+            Label {
+                text: qsTr("Active address: %1").arg(showPcDetailsDialog.activeAddress.length > 0 ? showPcDetailsDialog.activeAddress : qsTr("N/A"))
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+            }
+        }
+
+        footer: DialogButtonBox {
+            standardButtons: Dialog.Ok
+        }
+    }
+
+    NavigableDialog {
+        id: cloudDeckSettingsDialog
+        title: qsTr("CloudDeck Settings")
+        property string manualAddress: ""
+        property string activeAddress: ""
         property string cloudDeckUser: ""
         property string cloudDeckPassword: ""
         property bool cloudDeckHost: false
@@ -456,18 +510,18 @@ CenteredGridView {
         }
 
         contentItem: ColumnLayout {
-            id: showPcDetailsContent
-            spacing: 12
+            spacing: 8
             implicitWidth: 520
 
             Label {
-                text: showPcDetailsDialog.pcDetails
+                visible: !cloudDeckSettingsDialog.cloudDeckHost
+                text: qsTr("This host is not recognized as a CloudDeck instance.")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
 
             ColumnLayout {
-                visible: showPcDetailsDialog.cloudDeckHost
+                visible: cloudDeckSettingsDialog.cloudDeckHost
                 spacing: 6
                 Layout.fillWidth: true
 
@@ -477,7 +531,7 @@ CenteredGridView {
                 }
 
                 Label {
-                    text: qsTr("User: %1").arg(showPcDetailsDialog.cloudDeckUser.length > 0 ? showPcDetailsDialog.cloudDeckUser : qsTr("Unknown"))
+                    text: qsTr("User: %1").arg(cloudDeckSettingsDialog.cloudDeckUser.length > 0 ? cloudDeckSettingsDialog.cloudDeckUser : qsTr("Unknown"))
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
                 }
@@ -491,20 +545,20 @@ CenteredGridView {
                     }
 
                     TextField {
-                        id: cloudDeckPasswordField
-                        text: showPcDetailsDialog.cloudDeckPassword.length > 0 ? showPcDetailsDialog.cloudDeckPassword : qsTr("Unknown")
+                        id: cloudDeckSettingsPasswordField
+                        text: cloudDeckSettingsDialog.cloudDeckPassword.length > 0 ? cloudDeckSettingsDialog.cloudDeckPassword : qsTr("Unknown")
                         readOnly: true
                         Layout.fillWidth: true
                     }
 
                     ToolButton {
                         text: qsTr("Copy")
-                        enabled: showPcDetailsDialog.cloudDeckPassword.length > 0
+                        enabled: cloudDeckSettingsDialog.cloudDeckPassword.length > 0
                         onClicked: {
-                            cloudDeckPasswordField.forceActiveFocus()
-                            cloudDeckPasswordField.selectAll()
-                            cloudDeckPasswordField.copy()
-                            cloudDeckPasswordField.deselect()
+                            cloudDeckSettingsPasswordField.forceActiveFocus()
+                            cloudDeckSettingsPasswordField.selectAll()
+                            cloudDeckSettingsPasswordField.copy()
+                            cloudDeckSettingsPasswordField.deselect()
                         }
                     }
                 }
@@ -512,16 +566,238 @@ CenteredGridView {
                 Label {
                     text: qsTr("Sunshine")
                     font.bold: true
+                    Layout.topMargin: 4
+                }
+
+                RowLayout {
+                    spacing: 6
+                    Layout.fillWidth: true
+
+                    Label { text: qsTr("Username:") }
+                    Label { text: qsTr("sunshine"); font.bold: true }
+                    Label { text: qsTr("Password:") }
+                    Label { text: qsTr("sunshine"); font.bold: true }
+                }
+            }
+        }
+
+        footer: DialogButtonBox {
+            standardButtons: Dialog.Ok
+        }
+    }
+
+    NavigableDialog {
+        id: sessionTimerSettingsDialog
+        title: qsTr("Session Timer Settings")
+        property string manualAddress: ""
+        property string activeAddress: ""
+        property bool cloudDeckHost: false
+        property int sessionTimerHours: 8
+        property int sessionTimerDisplayMode: 1
+        property int sessionTimerWarnMinutes: 5
+        property bool sessionTimerHourlyReminderEnabled: true
+        property int sessionTimerHourlyReminderSeconds: 5
+        property int compactFieldWidth: 58
+
+        onOpened: {
+            var hostAddress = manualAddress.length > 0 ? manualAddress : activeAddress
+            cloudDeckHost = CloudDeckManagerApi.isCloudDeckHost(hostAddress)
+            if (cloudDeckHost) {
+                sessionTimerHours = CloudDeckManagerApi.getSessionTimerHours()
+                sessionTimerDisplayMode = CloudDeckManagerApi.getSessionTimerDisplayMode()
+                sessionTimerWarnMinutes = CloudDeckManagerApi.getSessionTimerWarnMinutes()
+                sessionTimerHourlyReminderEnabled = CloudDeckManagerApi.getSessionTimerHourlyReminderEnabled()
+                sessionTimerHourlyReminderSeconds = CloudDeckManagerApi.getSessionTimerHourlyReminderSeconds()
+            } else {
+                sessionTimerHours = 8
+                sessionTimerDisplayMode = 1
+                sessionTimerWarnMinutes = 5
+                sessionTimerHourlyReminderEnabled = true
+                sessionTimerHourlyReminderSeconds = 5
+            }
+
+            sessionTimerHoursField.text = String(sessionTimerHours)
+            sessionTimerBeforeEndMinutesField.text = String(sessionTimerWarnMinutes)
+            sessionTimerHourlyReminderSecondsField.text = String(sessionTimerHourlyReminderSeconds)
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 8
+            implicitWidth: 540
+
+            Label {
+                visible: !sessionTimerSettingsDialog.cloudDeckHost
+                text: qsTr("This host is not recognized as a CloudDeck instance.")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            ColumnLayout {
+                visible: sessionTimerSettingsDialog.cloudDeckHost
+                spacing: 6
+                Layout.fillWidth: true
+
+                RowLayout {
+                    spacing: 6
+                    Layout.fillWidth: true
+
+                    Label {
+                        text: qsTr("Session duration:")
+                    }
+
+                    TextField {
+                        id: sessionTimerHoursField
+                        text: "8"
+                        validator: IntValidator {
+                            bottom: 1
+                            top: 24
+                        }
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        Layout.preferredWidth: sessionTimerSettingsDialog.compactFieldWidth
+
+                        onEditingFinished: {
+                            var parsedHours = parseInt(text)
+                            if (isNaN(parsedHours)) {
+                                parsedHours = sessionTimerSettingsDialog.sessionTimerHours
+                            }
+
+                            parsedHours = Math.max(1, Math.min(24, parsedHours))
+                            sessionTimerSettingsDialog.sessionTimerHours = parsedHours
+                            text = String(parsedHours)
+                            CloudDeckManagerApi.setSessionTimerHours(parsedHours)
+                        }
+                    }
+
+                    Label { text: qsTr("hours") }
                 }
 
                 Label {
-                    text: qsTr("Username: sunshine")
-                    Layout.fillWidth: true
+                    text: qsTr("Timer visibility")
+                    font.bold: true
                 }
 
-                Label {
-                    text: qsTr("Password: sunshine")
+                ButtonGroup {
+                    id: sessionTimerSettingsModeGroup
+                }
+
+                RadioButton {
+                    text: qsTr("Always show timer")
+                    ButtonGroup.group: sessionTimerSettingsModeGroup
+                    checked: sessionTimerSettingsDialog.sessionTimerDisplayMode === 0
+                    onToggled: {
+                        if (checked) {
+                            sessionTimerSettingsDialog.sessionTimerDisplayMode = 0
+                            CloudDeckManagerApi.setSessionTimerDisplayMode(0)
+                        }
+                    }
+                }
+
+                RowLayout {
+                    spacing: 6
                     Layout.fillWidth: true
+
+                    RadioButton {
+                        text: qsTr("Only before end")
+                        ButtonGroup.group: sessionTimerSettingsModeGroup
+                        checked: sessionTimerSettingsDialog.sessionTimerDisplayMode === 1
+                        onToggled: {
+                            if (checked) {
+                                sessionTimerSettingsDialog.sessionTimerDisplayMode = 1
+                                CloudDeckManagerApi.setSessionTimerDisplayMode(1)
+                            }
+                        }
+                    }
+
+                    TextField {
+                        id: sessionTimerBeforeEndMinutesField
+                        text: "5"
+                        validator: IntValidator {
+                            bottom: 1
+                            top: 120
+                        }
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        Layout.preferredWidth: sessionTimerSettingsDialog.compactFieldWidth
+                        enabled: sessionTimerSettingsDialog.sessionTimerDisplayMode === 1
+
+                        onEditingFinished: {
+                            var parsedMinutes = parseInt(text)
+                            if (isNaN(parsedMinutes)) {
+                                parsedMinutes = sessionTimerSettingsDialog.sessionTimerWarnMinutes
+                            }
+
+                            parsedMinutes = Math.max(1, Math.min(120, parsedMinutes))
+                            sessionTimerSettingsDialog.sessionTimerWarnMinutes = parsedMinutes
+                            text = String(parsedMinutes)
+                            CloudDeckManagerApi.setSessionTimerWarnMinutes(parsedMinutes)
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("min")
+                        enabled: sessionTimerSettingsDialog.sessionTimerDisplayMode === 1
+                    }
+                }
+
+                RadioButton {
+                    text: qsTr("Hide timer always")
+                    ButtonGroup.group: sessionTimerSettingsModeGroup
+                    checked: sessionTimerSettingsDialog.sessionTimerDisplayMode === 2
+                    onToggled: {
+                        if (checked) {
+                            sessionTimerSettingsDialog.sessionTimerDisplayMode = 2
+                            CloudDeckManagerApi.setSessionTimerDisplayMode(2)
+                        }
+                    }
+                }
+
+                RowLayout {
+                    spacing: 6
+                    Layout.fillWidth: true
+                    Layout.topMargin: 4
+
+                    CheckBox {
+                        id: sessionTimerHourlyReminderCheck
+                        text: qsTr("Hourly reminder")
+                        checked: sessionTimerSettingsDialog.sessionTimerHourlyReminderEnabled
+                        onToggled: {
+                            sessionTimerSettingsDialog.sessionTimerHourlyReminderEnabled = checked
+                            CloudDeckManagerApi.setSessionTimerHourlyReminderEnabled(checked)
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("for")
+                        enabled: sessionTimerHourlyReminderCheck.checked
+                    }
+
+                    TextField {
+                        id: sessionTimerHourlyReminderSecondsField
+                        text: "5"
+                        validator: IntValidator {
+                            bottom: 1
+                            top: 60
+                        }
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        Layout.preferredWidth: sessionTimerSettingsDialog.compactFieldWidth
+                        enabled: sessionTimerHourlyReminderCheck.checked
+
+                        onEditingFinished: {
+                            var parsedSeconds = parseInt(text)
+                            if (isNaN(parsedSeconds)) {
+                                parsedSeconds = sessionTimerSettingsDialog.sessionTimerHourlyReminderSeconds
+                            }
+
+                            parsedSeconds = Math.max(1, Math.min(60, parsedSeconds))
+                            sessionTimerSettingsDialog.sessionTimerHourlyReminderSeconds = parsedSeconds
+                            text = String(parsedSeconds)
+                            CloudDeckManagerApi.setSessionTimerHourlyReminderSeconds(parsedSeconds)
+                        }
+                    }
+
+                    Label {
+                        text: qsTr("seconds")
+                        enabled: sessionTimerHourlyReminderCheck.checked
+                    }
                 }
             }
         }

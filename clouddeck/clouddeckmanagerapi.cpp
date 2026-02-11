@@ -16,6 +16,68 @@ namespace {
 constexpr const char kCognitoEndpoint[] = "https://cognito-idp.eu-central-1.amazonaws.com/";
 constexpr const char kCognitoClientId[] = "2e7an7pt3vqdae0abgskfs38k8";
 constexpr const char kCloudDeckApiEndpoint[] = "https://api.clouddeck.app";
+constexpr const char kSessionTimerHoursKey[] = "clouddeck/sessionTimerHours";
+constexpr const char kSessionTimerDisplayModeKey[] = "clouddeck/sessionTimerDisplayMode";
+constexpr const char kSessionTimerWarnMinutesKey[] = "clouddeck/sessionTimerWarnMinutes";
+constexpr const char kSessionTimerHourlyReminderEnabledKey[] = "clouddeck/sessionTimerHourlyReminderEnabled";
+constexpr const char kSessionTimerHourlyReminderSecondsKey[] = "clouddeck/sessionTimerHourlyReminderSeconds";
+constexpr int kDefaultSessionTimerHours = 8;
+constexpr int kMinSessionTimerHours = 1;
+constexpr int kMaxSessionTimerHours = 24;
+constexpr int kSessionTimerDisplayModeAlways = 0;
+constexpr int kSessionTimerDisplayModeBeforeEnd = 1;
+constexpr int kSessionTimerDisplayModeHidden = 2;
+constexpr int kDefaultSessionTimerDisplayMode = kSessionTimerDisplayModeBeforeEnd;
+constexpr int kMinSessionTimerDisplayMode = kSessionTimerDisplayModeAlways;
+constexpr int kMaxSessionTimerDisplayMode = kSessionTimerDisplayModeHidden;
+constexpr int kDefaultSessionTimerWarnMinutes = 5;
+constexpr int kMinSessionTimerWarnMinutes = 1;
+constexpr int kMaxSessionTimerWarnMinutes = 120;
+constexpr bool kDefaultSessionTimerHourlyReminderEnabled = true;
+constexpr int kDefaultSessionTimerHourlyReminderSeconds = 5;
+constexpr int kMinSessionTimerHourlyReminderSeconds = 1;
+constexpr int kMaxSessionTimerHourlyReminderSeconds = 60;
+
+int sanitizeSessionTimerHours(int hours)
+{
+    if (hours < kMinSessionTimerHours) {
+        return kDefaultSessionTimerHours;
+    }
+    if (hours > kMaxSessionTimerHours) {
+        return kMaxSessionTimerHours;
+    }
+    return hours;
+}
+
+int sanitizeSessionTimerDisplayMode(int mode)
+{
+    if (mode < kMinSessionTimerDisplayMode || mode > kMaxSessionTimerDisplayMode) {
+        return kDefaultSessionTimerDisplayMode;
+    }
+    return mode;
+}
+
+int sanitizeSessionTimerWarnMinutes(int minutes)
+{
+    if (minutes < kMinSessionTimerWarnMinutes) {
+        return kDefaultSessionTimerWarnMinutes;
+    }
+    if (minutes > kMaxSessionTimerWarnMinutes) {
+        return kMaxSessionTimerWarnMinutes;
+    }
+    return minutes;
+}
+
+int sanitizeSessionTimerHourlyReminderSeconds(int seconds)
+{
+    if (seconds < kMinSessionTimerHourlyReminderSeconds) {
+        return kDefaultSessionTimerHourlyReminderSeconds;
+    }
+    if (seconds > kMaxSessionTimerHourlyReminderSeconds) {
+        return kMaxSessionTimerHourlyReminderSeconds;
+    }
+    return seconds;
+}
 
 QString extractErrorCode(const QJsonObject &obj)
 {
@@ -293,6 +355,72 @@ QString CloudDeckManagerApi::getStoredPassword() const
 {
     QSettings settings;
     return settings.value("clouddeck/password").toString();
+}
+
+int CloudDeckManagerApi::getSessionTimerHours() const
+{
+    QSettings settings;
+    return sanitizeSessionTimerHours(settings.value(QLatin1String(kSessionTimerHoursKey),
+                                                    kDefaultSessionTimerHours).toInt());
+}
+
+void CloudDeckManagerApi::setSessionTimerHours(int hours)
+{
+    QSettings settings;
+    settings.setValue(QLatin1String(kSessionTimerHoursKey), sanitizeSessionTimerHours(hours));
+}
+
+int CloudDeckManagerApi::getSessionTimerDisplayMode() const
+{
+    QSettings settings;
+    return sanitizeSessionTimerDisplayMode(settings.value(QLatin1String(kSessionTimerDisplayModeKey),
+                                                          kDefaultSessionTimerDisplayMode).toInt());
+}
+
+void CloudDeckManagerApi::setSessionTimerDisplayMode(int mode)
+{
+    QSettings settings;
+    settings.setValue(QLatin1String(kSessionTimerDisplayModeKey), sanitizeSessionTimerDisplayMode(mode));
+}
+
+int CloudDeckManagerApi::getSessionTimerWarnMinutes() const
+{
+    QSettings settings;
+    return sanitizeSessionTimerWarnMinutes(settings.value(QLatin1String(kSessionTimerWarnMinutesKey),
+                                                          kDefaultSessionTimerWarnMinutes).toInt());
+}
+
+void CloudDeckManagerApi::setSessionTimerWarnMinutes(int minutes)
+{
+    QSettings settings;
+    settings.setValue(QLatin1String(kSessionTimerWarnMinutesKey), sanitizeSessionTimerWarnMinutes(minutes));
+}
+
+bool CloudDeckManagerApi::getSessionTimerHourlyReminderEnabled() const
+{
+    QSettings settings;
+    return settings.value(QLatin1String(kSessionTimerHourlyReminderEnabledKey),
+                          kDefaultSessionTimerHourlyReminderEnabled).toBool();
+}
+
+void CloudDeckManagerApi::setSessionTimerHourlyReminderEnabled(bool enabled)
+{
+    QSettings settings;
+    settings.setValue(QLatin1String(kSessionTimerHourlyReminderEnabledKey), enabled);
+}
+
+int CloudDeckManagerApi::getSessionTimerHourlyReminderSeconds() const
+{
+    QSettings settings;
+    return sanitizeSessionTimerHourlyReminderSeconds(settings.value(QLatin1String(kSessionTimerHourlyReminderSecondsKey),
+                                                                    kDefaultSessionTimerHourlyReminderSeconds).toInt());
+}
+
+void CloudDeckManagerApi::setSessionTimerHourlyReminderSeconds(int seconds)
+{
+    QSettings settings;
+    settings.setValue(QLatin1String(kSessionTimerHourlyReminderSecondsKey),
+                      sanitizeSessionTimerHourlyReminderSeconds(seconds));
 }
 
 bool CloudDeckManagerApi::isCloudDeckHost(const QString &hostAddress) const

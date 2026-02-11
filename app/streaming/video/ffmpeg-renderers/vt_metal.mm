@@ -495,6 +495,11 @@ public:
                     renderRect.x = 0;
                     renderRect.y = 0;
                 }
+                else if (i == Overlay::OverlaySessionTimer) {
+                    // Top center
+                    renderRect.x = (m_LastDrawableWidth - overlayTexture.width) / 2.0f;
+                    renderRect.y = m_LastDrawableHeight - overlayTexture.height;
+                }
                 else if (i == Overlay::OverlayDebug) {
                     // Top left
                     renderRect.x = 0;
