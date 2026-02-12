@@ -71,6 +71,33 @@ Hosting for Moonlight's Debian and L4T package repositories is graciously provid
     * Qt 5: `qt5-qtsvg-devel qt5-qtquickcontrols2-devel`
 * Building the Vulkan renderer requires a `libplacebo-dev`/`libplacebo-devel` version of at least v7.349.0 and FFmpeg 6.1 or later.
 
+### Quick Install on Linux (Ubuntu/Debian)
+
+```bash
+git clone https://github.com/gentmat/moonlight-qt
+cd moonlight-qt
+git submodule update --init --recursive
+
+# Ubuntu/Debian deps (Qt6 + required libs)
+sudo apt update
+sudo apt install -y \
+  build-essential qmake6 \
+  qt6-base-dev qt6-declarative-dev libqt6svg6-dev qt6-wayland \
+  qml6-module-qtquick-controls qml6-module-qtquick-templates qml6-module-qtquick-layouts \
+  qml6-module-qtqml-workerscript qml6-module-qtquick-window qml6-module-qtquick \
+  libegl1-mesa-dev libgl1-mesa-dev libopus-dev libsdl2-dev libsdl2-ttf-dev \
+  libssl-dev libavcodec-dev libavformat-dev libswscale-dev libva-dev libvdpau-dev \
+  libxkbcommon-dev wayland-protocols libdrm-dev
+
+./clean_rebuild.sh
+./app/moonlight
+```
+
+Important:
+
+* This is not a portable package; it only works after installing dependencies on that machine.
+* If submodules are not initialized, the build will fail.
+
 ### Steam Link Build Requirements
 * [Steam Link SDK](https://github.com/ValveSoftware/steamlink-sdk) cloned on your build system
 * STEAMLINK_SDK_PATH environment variable set to the Steam Link SDK path
