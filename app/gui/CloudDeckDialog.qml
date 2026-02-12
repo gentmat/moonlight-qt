@@ -23,6 +23,7 @@ NavigableDialog {
     property int maxRetries: 10
     property int pairingRetryCount: 0
     property int maxPairingRetries: 5
+    property int pairingSuccessCloseDelayMs: 1500
     property int pendingPairIndex: -1
     property string pendingPin: ""
     property string accessToken: ""
@@ -49,6 +50,7 @@ NavigableDialog {
         pairingRetryTimer.stop()
         pinSubmitTimer.stop()
         successCloseTimer.stop()
+        manualStartCloseTimer.stop()
     }
 
     function failWithError(message) {
@@ -65,6 +67,7 @@ NavigableDialog {
         pairingRetryTimer.stop()
         pinSubmitTimer.stop()
         successCloseTimer.stop()
+        manualStartCloseTimer.stop()
     }
 
     function isFlowActive() {
@@ -299,6 +302,16 @@ NavigableDialog {
         }
     }
 
+    Timer {
+        id: manualStartCloseTimer
+        interval: 1000
+        repeat: false
+
+        onTriggered: {
+            cloudDeckDialog.close()
+        }
+    }
+
     Connections {
         target: CloudDeckManagerApi
 
@@ -367,6 +380,7 @@ NavigableDialog {
                     statusText = qsTr("CloudDeck instance is running.")
                     manualStartInProgress = false
                     busy = false
+                    manualStartCloseTimer.restart()
                 }
                 return
             }
@@ -469,6 +483,7 @@ NavigableDialog {
             }
 
             statusText = qsTr("CloudDeck paired successfully.")
+            successCloseTimer.interval = pairingSuccessCloseDelayMs
             successCloseTimer.restart()
         }
     }
