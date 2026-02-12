@@ -105,6 +105,7 @@ public:
     Q_INVOKABLE void start();
     Q_INVOKABLE void interrupt();
     Q_INVOKABLE QString hostAddress() const;
+    Q_INVOKABLE QString hostUuid() const;
     Q_INVOKABLE void setCloudDeckSessionTimerConfig(qint64 lastStartedMs,
                                                     int sessionHours,
                                                     int displayMode,

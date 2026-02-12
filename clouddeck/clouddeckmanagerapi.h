@@ -65,6 +65,9 @@ public:
     Q_INVOKABLE int getSessionTimerHourlyReminderSeconds() const;
     Q_INVOKABLE void setSessionTimerHourlyReminderSeconds(int seconds);
     Q_INVOKABLE bool isCloudDeckHost(const QString &hostAddress) const;
+    Q_INVOKABLE bool isCloudDeckHostByUuid(const QString &uuid) const;
+    Q_INVOKABLE void setCloudDeckHostUuid(const QString &uuid);
+    Q_INVOKABLE QString getCloudDeckHostUuid() const;
     Q_INVOKABLE QString machineId() const;
     Q_INVOKABLE void fetchMachineId(const QString &accessToken);
     Q_INVOKABLE void fetchMachineStatus(const QString &machineId, const QString &accessToken);

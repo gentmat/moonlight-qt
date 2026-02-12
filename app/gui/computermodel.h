@@ -18,7 +18,8 @@ class ComputerModel : public QAbstractListModel
         ServerSupportedRole,
         DetailsRole,
         ActiveAddressRole,
-        ManualAddressRole
+        ManualAddressRole,
+        UuidRole
     };
 
 public:
@@ -46,6 +47,8 @@ public:
     Q_INVOKABLE void wakeComputer(int computerIndex);
 
     Q_INVOKABLE void renameComputer(int computerIndex, QString name);
+
+    Q_INVOKABLE QString getComputerUuid(int computerIndex);
 
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 

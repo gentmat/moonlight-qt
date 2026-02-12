@@ -52,7 +52,7 @@ Item {
             CloudDeckManagerApi.getSessionTimerHourlyReminderEnabled(),
             CloudDeckManagerApi.getSessionTimerHourlyReminderSeconds())
 
-        if (!CloudDeckManagerApi.isCloudDeckHost(session.hostAddress())) {
+        if (!CloudDeckManagerApi.isCloudDeckHostByUuid(session.hostUuid())) {
             queueSessionStart()
             return
         }

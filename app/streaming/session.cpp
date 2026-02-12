@@ -1809,6 +1809,16 @@ QString Session::hostAddress() const
     return m_Computer->activeAddress.address();
 }
 
+QString Session::hostUuid() const
+{
+    if (m_Computer == nullptr) {
+        return QString();
+    }
+
+    QReadLocker lock(&m_Computer->lock);
+    return m_Computer->uuid;
+}
+
 void Session::setCloudDeckSessionTimerConfig(qint64 lastStartedMs,
                                              int sessionHours,
                                              int displayMode,

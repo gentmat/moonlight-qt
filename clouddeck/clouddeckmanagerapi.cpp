@@ -327,6 +327,7 @@ void CloudDeckManagerApi::clearStoredCredentials()
     settings.remove("clouddeck/hostUser");
     settings.remove("clouddeck/hostPassword");
     settings.remove("clouddeck/serverAddress");
+    settings.remove("clouddeck/hostUuid");
 }
 
 QString CloudDeckManagerApi::getStoredHostPassword() const
@@ -439,6 +440,35 @@ bool CloudDeckManagerApi::isCloudDeckHost(const QString &hostAddress) const
         return false;
     }
     return normalizedHost.compare(normalizedStored, Qt::CaseInsensitive) == 0;
+}
+
+bool CloudDeckManagerApi::isCloudDeckHostByUuid(const QString &uuid) const
+{
+    if (uuid.isEmpty()) {
+        return false;
+    }
+    QSettings settings;
+    const QString storedUuid = settings.value("clouddeck/hostUuid").toString();
+    if (storedUuid.isEmpty()) {
+        return false;
+    }
+    return uuid.compare(storedUuid, Qt::CaseInsensitive) == 0;
+}
+
+void CloudDeckManagerApi::setCloudDeckHostUuid(const QString &uuid)
+{
+    QSettings settings;
+    if (uuid.isEmpty()) {
+        settings.remove("clouddeck/hostUuid");
+    } else {
+        settings.setValue("clouddeck/hostUuid", uuid);
+    }
+}
+
+QString CloudDeckManagerApi::getCloudDeckHostUuid() const
+{
+    QSettings settings;
+    return settings.value("clouddeck/hostUuid").toString();
 }
 
 void CloudDeckManagerApi::fetchMachineId(const QString &accessToken)

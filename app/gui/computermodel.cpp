@@ -90,6 +90,8 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
         return computer->activeAddress.address();
     case ManualAddressRole:
         return computer->manualAddress.address();
+    case UuidRole:
+        return computer->uuid;
     default:
         return QVariant();
     }
@@ -120,6 +122,7 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[DetailsRole] = "details";
     names[ActiveAddressRole] = "activeAddress";
     names[ManualAddressRole] = "manualAddress";
+    names[UuidRole] = "uuid";
 
     return names;
 }
@@ -187,6 +190,13 @@ void ComputerModel::renameComputer(int computerIndex, QString name)
     Q_ASSERT(computerIndex < m_Computers.count());
 
     m_ComputerManager->renameHost(m_Computers[computerIndex], name);
+}
+
+QString ComputerModel::getComputerUuid(int computerIndex)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    return m_Computers[computerIndex]->uuid;
 }
 
 QString ComputerModel::generatePinString()

@@ -424,6 +424,12 @@ NavigableDialog {
             pairingFlowInProgress = false
             busy = false
             pairingRetryCount = 0
+
+            // Persist the host UUID for reliable CloudDeck host identification
+            if (pendingPairIndex >= 0) {
+                CloudDeckManagerApi.setCloudDeckHostUuid(computerModel.getComputerUuid(pendingPairIndex))
+            }
+
             statusText = qsTr("CloudDeck paired successfully.")
             successCloseTimer.restart()
         }
