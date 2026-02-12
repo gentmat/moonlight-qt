@@ -1141,6 +1141,20 @@ void CloudDeckManagerApi::handleMachineCommandReply()
         return;
     }
 
+    // CloudDeck may return a 5xx even though the start/stop action was accepted
+    // and the machine is transitioning. Treat these as transient and keep polling
+    // status instead of failing the flow immediately.
+    if (statusCode >= 500 && m_machineAction != MachineNone) {
+        m_transitionCheckCount = 0;
+        if (!m_machinePollTimer->isActive()) {
+            m_machinePollTimer->start();
+        }
+        if (!m_machineId.isEmpty() && !m_machineAccessToken.isEmpty() && !m_machineStatusReply) {
+            fetchMachineStatus(m_machineId, m_machineAccessToken);
+        }
+        return;
+    }
+
     QString errorCode;
     QString errorMessage;
     if (!body.isEmpty()) {
