@@ -131,32 +131,76 @@ echo Building %BUILD_CONFIG%
 call "%MAKE_CMD%" %BUILD_CONFIG%
 if !ERRORLEVEL! NEQ 0 goto Error
 
+set "EXE_PATH="
+if exist "%ROOT%\app\%BUILD_CONFIG%\moonlight.exe" set "EXE_PATH=%ROOT%\app\%BUILD_CONFIG%\moonlight.exe"
+if not defined EXE_PATH if exist "%ROOT%\app\%BUILD_CONFIG%\Moonlight.exe" set "EXE_PATH=%ROOT%\app\%BUILD_CONFIG%\Moonlight.exe"
+if not defined EXE_PATH if exist "%ROOT%\app\%BUILD_CONFIG%\app.exe" set "EXE_PATH=%ROOT%\app\%BUILD_CONFIG%\app.exe"
+
+if defined EXE_PATH (
+    set "WINDEPLOYQT_CMD="
+    where windeployqt.exe >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        set "WINDEPLOYQT_CMD=windeployqt.exe"
+    ) else (
+        if exist "%QT_BIN_DIR%\windeployqt.exe" (
+            set "WINDEPLOYQT_CMD=%QT_BIN_DIR%\windeployqt.exe"
+        )
+    )
+
+    if defined WINDEPLOYQT_CMD (
+        call "!WINDEPLOYQT_CMD!" --no-translations --no-system-d3d-compiler --release --dir "!ROOT!\app\!BUILD_CONFIG!" "!EXE_PATH!"
+        if !ERRORLEVEL! NEQ 0 goto Error
+    )
+)
+
 echo Copying runtime DLLs
 set "DLL_SRC=%ROOT%\libs\windows\lib\x64"
 set "DLL_DST=%ROOT%\app\%BUILD_CONFIG%"
 if not exist "%DLL_DST%" mkdir "%DLL_DST%"
-if exist "%DLL_SRC%\*.dll" (
-    for %%F in ("%DLL_SRC%\*.dll") do (
-        copy /y "%%~fF" "%DLL_DST%" >nul
-        if !ERRORLEVEL! NEQ 0 goto Error
-    )
-) else (
-    echo Missing runtime DLLs in "%DLL_SRC%".
+if not exist "%DLL_SRC%\*.dll" goto MissingRuntimeDlls
+copy /y "%DLL_SRC%\*.dll" "%DLL_DST%" >nul
+if !ERRORLEVEL! NEQ 0 goto Error
+
+rem Ensure essential Qt runtime DLLs are present next to the executable.
+rem If windeployqt wasn't available or didn't run, fall back to copying from QT_BIN_DIR.
+if exist "%DLL_DST%\Moonlight.exe" if not exist "%DLL_DST%\Qt6Core.dll" goto CopyQtRuntimeFallback
+goto AfterQtRuntimeFallback
+
+:CopyQtRuntimeFallback
+if not exist "!QT_BIN_DIR!\Qt6Core.dll" (
+    echo Missing Qt runtime (Qt6Core.dll). Ensure QT_BIN_DIR points at your Qt bin folder.
     goto Error
 )
+copy /y "!QT_BIN_DIR!\Qt6Core.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6Gui.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6Network.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6Qml.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6Quick.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6QuickControls2.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6QuickTemplates2.dll" "!DLL_DST!" >nul
+copy /y "!QT_BIN_DIR!\Qt6Svg.dll" "!DLL_DST!" >nul
+
+:AfterQtRuntimeFallback
 
 set "ANTIH_SRC=%ROOT%\AntiHooking\%BUILD_CONFIG%\AntiHooking.dll"
-if exist "%ANTIH_SRC%" (
-    copy /y "%ANTIH_SRC%" "%DLL_DST%" >nul
-    if !ERRORLEVEL! NEQ 0 goto Error
-) else (
-    echo Missing AntiHooking.dll at "%ANTIH_SRC%".
-    goto Error
-)
+if not exist "%ANTIH_SRC%" goto MissingAntiHooking
+copy /y "%ANTIH_SRC%" "%DLL_DST%" >nul
+if !ERRORLEVEL! NEQ 0 goto Error
+goto AfterAntiHooking
+
+:MissingAntiHooking
+echo Missing AntiHooking.dll at "%ANTIH_SRC%".
+goto Error
+
+:AfterAntiHooking
 
 popd
 echo Build complete.
 exit /b 0
+
+:MissingRuntimeDlls
+echo Missing runtime DLLs in "%DLL_SRC%".
+goto Error
 
 :Error
 set "EXIT_CODE=!ERRORLEVEL!"

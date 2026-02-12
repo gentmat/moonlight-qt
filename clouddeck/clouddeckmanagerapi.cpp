@@ -282,8 +282,14 @@ void CloudDeckManagerApi::addMachineClient(const QString &accessToken,
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     applyAuthHeader(request, trimmedToken);
 
-    m_machineClientReply = m_networkAccessManager->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
-    connect(m_machineClientReply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleMachineClientReply);
+    QNetworkReply* reply = m_networkAccessManager->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    m_machineClientReply = reply;
+    connect(reply, &QObject::destroyed, this, [this, reply]() {
+        if (m_machineClientReply == reply) {
+            m_machineClientReply = nullptr;
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleMachineClientReply);
 }
 
 int CloudDeckManagerApi::accessTokenSecondsRemaining() const
@@ -460,41 +466,53 @@ void CloudDeckManagerApi::fetchMachineId(const QString &accessToken)
     request.setRawHeader("X-Amz-User-Agent", "aws-amplify/5.0.4 auth framework/3");
 
     m_getUserInProgress = true;
-    m_getUserReply = m_networkAccessManager->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
-    connect(m_getUserReply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleGetUserReply);
+    QNetworkReply* reply = m_networkAccessManager->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    m_getUserReply = reply;
+    connect(reply, &QObject::destroyed, this, [this, reply]() {
+        if (m_getUserReply == reply) {
+            m_getUserReply = nullptr;
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleGetUserReply);
 }
 
 void CloudDeckManagerApi::cancelCurrentOperation()
 {
     if (m_loginReply) {
-        m_loginReply->abort();
-        m_loginReply->deleteLater();
+        QNetworkReply* reply = m_loginReply;
         m_loginReply = nullptr;
+        reply->abort();
+        reply->deleteLater();
     }
     if (m_getUserReply) {
-        m_getUserReply->abort();
-        m_getUserReply->deleteLater();
+        QNetworkReply* reply = m_getUserReply;
         m_getUserReply = nullptr;
+        reply->abort();
+        reply->deleteLater();
     }
     if (m_accountReply) {
-        m_accountReply->abort();
-        m_accountReply->deleteLater();
+        QNetworkReply* reply = m_accountReply;
         m_accountReply = nullptr;
+        reply->abort();
+        reply->deleteLater();
     }
     if (m_machineStatusReply) {
-        m_machineStatusReply->abort();
-        m_machineStatusReply->deleteLater();
+        QNetworkReply* reply = m_machineStatusReply;
         m_machineStatusReply = nullptr;
+        reply->abort();
+        reply->deleteLater();
     }
     if (m_machineCommandReply) {
-        m_machineCommandReply->abort();
-        m_machineCommandReply->deleteLater();
+        QNetworkReply* reply = m_machineCommandReply;
         m_machineCommandReply = nullptr;
+        reply->abort();
+        reply->deleteLater();
     }
     if (m_machineClientReply) {
-        m_machineClientReply->abort();
-        m_machineClientReply->deleteLater();
+        QNetworkReply* reply = m_machineClientReply;
         m_machineClientReply = nullptr;
+        reply->abort();
+        reply->deleteLater();
     }
 
     m_machinePollTimer->stop();
@@ -528,8 +546,14 @@ void CloudDeckManagerApi::fetchMachineStatus(const QString &machineId, const QSt
     QNetworkRequest request(url);
     applyAuthHeader(request, trimmedToken);
 
-    m_machineStatusReply = m_networkAccessManager->get(request);
-    connect(m_machineStatusReply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleMachineStatusReply);
+    QNetworkReply* reply = m_networkAccessManager->get(request);
+    m_machineStatusReply = reply;
+    connect(reply, &QObject::destroyed, this, [this, reply]() {
+        if (m_machineStatusReply == reply) {
+            m_machineStatusReply = nullptr;
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleMachineStatusReply);
 }
 
 void CloudDeckManagerApi::startMachine(const QString &machineId, const QString &accessToken)
@@ -636,8 +660,14 @@ void CloudDeckManagerApi::loginWithCredentials(const QString &email, const QStri
     request.setRawHeader("X-Amz-Target", "AWSCognitoIdentityProviderService.InitiateAuth");
 
     m_loginInProgress = true;
-    m_loginReply = m_networkAccessManager->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
-    connect(m_loginReply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleLoginReply);
+    QNetworkReply* reply = m_networkAccessManager->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
+    m_loginReply = reply;
+    connect(reply, &QObject::destroyed, this, [this, reply]() {
+        if (m_loginReply == reply) {
+            m_loginReply = nullptr;
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleLoginReply);
 }
 
 void CloudDeckManagerApi::handleLoginReply()
@@ -848,8 +878,14 @@ void CloudDeckManagerApi::fetchAccountMachineId(const QString &accountId, const 
     applyAuthHeader(request, trimmedToken);
 
     m_accountInProgress = true;
-    m_accountReply = m_networkAccessManager->get(request);
-    connect(m_accountReply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleAccountReply);
+    QNetworkReply* reply = m_networkAccessManager->get(request);
+    m_accountReply = reply;
+    connect(reply, &QObject::destroyed, this, [this, reply]() {
+        if (m_accountReply == reply) {
+            m_accountReply = nullptr;
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleAccountReply);
 }
 
 void CloudDeckManagerApi::handleAccountReply()
@@ -1196,17 +1232,24 @@ void CloudDeckManagerApi::sendMachineCommand(const QString &machineId, const QSt
     }
 
     if (m_machineCommandReply) {
-        m_machineCommandReply->abort();
-        m_machineCommandReply->deleteLater();
+        QNetworkReply* oldReply = m_machineCommandReply;
         m_machineCommandReply = nullptr;
+        oldReply->abort();
+        oldReply->deleteLater();
     }
 
     const QUrl url(QString("%1/machines/%2/%3").arg(QLatin1String(kCloudDeckApiEndpoint), machineId, action));
     QNetworkRequest request(url);
     applyAuthHeader(request, accessToken);
 
-    m_machineCommandReply = m_networkAccessManager->post(request, QByteArray());
-    connect(m_machineCommandReply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleMachineCommandReply);
+    QNetworkReply* reply = m_networkAccessManager->post(request, QByteArray());
+    m_machineCommandReply = reply;
+    connect(reply, &QObject::destroyed, this, [this, reply]() {
+        if (m_machineCommandReply == reply) {
+            m_machineCommandReply = nullptr;
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, &CloudDeckManagerApi::handleMachineCommandReply);
 }
 
 void CloudDeckManagerApi::finishLogin(AuthStatus status,

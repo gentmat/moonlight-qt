@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QVariantMap>
 #include <QNetworkAccessManager>
+#include <QPointer>
 #include <QTimer>
 
 class QNetworkReply;
@@ -134,12 +135,12 @@ private:
     void sendMachineCommand(const QString &machineId, const QString &action, const QString &accessToken);
 
     QNetworkAccessManager *m_networkAccessManager;
-    QNetworkReply *m_loginReply;
-    QNetworkReply *m_getUserReply;
-    QNetworkReply *m_accountReply;
-    QNetworkReply *m_machineStatusReply;
-    QNetworkReply *m_machineCommandReply;
-    QNetworkReply *m_machineClientReply;
+    QPointer<QNetworkReply> m_loginReply;
+    QPointer<QNetworkReply> m_getUserReply;
+    QPointer<QNetworkReply> m_accountReply;
+    QPointer<QNetworkReply> m_machineStatusReply;
+    QPointer<QNetworkReply> m_machineCommandReply;
+    QPointer<QNetworkReply> m_machineClientReply;
     bool m_loginInProgress;
     bool m_getUserInProgress;
     bool m_accountInProgress;
