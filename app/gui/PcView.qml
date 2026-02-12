@@ -35,6 +35,9 @@ CenteredGridView {
         // Setup signals on CM
         ComputerManager.computerAddCompleted.connect(addComplete)
 
+        // Restore CloudDeck UUID mapping from stored address on startup.
+        reconcileCloudDeckHostUuidFromStoredAddress()
+
         // Highlight the first item if a gamepad is connected
         if (currentIndex === -1 && SdlGamepadKeyNavigation.getConnectedGamepads() > 0) {
             currentIndex = 0
@@ -60,6 +63,12 @@ CenteredGridView {
 
     function addComplete(success, detectedPortBlocking)
     {
+        if (success) {
+            // Keep CloudDeck UUID mapping in sync when hosts are added/refreshed.
+            reconcileCloudDeckHostUuidFromStoredAddress()
+            return
+        }
+
         if (!success) {
             errorDialog.text = qsTr("Unable to connect to the specified PC.")
 
@@ -86,6 +95,33 @@ CenteredGridView {
     function openCloudDeckDialog()
     {
         cloudDeckDialog.open()
+    }
+
+    function reconcileCloudDeckHostUuidFromStoredAddress()
+    {
+        if (!CloudDeckManagerApi.hasStoredCredentials()) {
+            return
+        }
+
+        var storedAddress = CloudDeckManagerApi.getStoredServerAddress()
+        if (!storedAddress || storedAddress.length === 0) {
+            return
+        }
+
+        var index = computerModel.findComputerByManualAddress(storedAddress)
+        if (index < 0) {
+            return
+        }
+
+        var resolvedUuid = computerModel.getComputerUuid(index)
+        if (!resolvedUuid || resolvedUuid.length === 0) {
+            return
+        }
+
+        var existingUuid = CloudDeckManagerApi.getCloudDeckHostUuid()
+        if (existingUuid !== resolvedUuid) {
+            CloudDeckManagerApi.setCloudDeckHostUuid(resolvedUuid)
+        }
     }
 
     Row {
@@ -122,7 +158,8 @@ CenteredGridView {
         property bool cloudDeckHasCredentials: false
 
         function refreshCloudDeckMenuState() {
-            cloudDeckHostKnown = CloudDeckManagerApi.isCloudDeckHostByUuid(model.uuid)
+            cloudDeckHostKnown = CloudDeckManagerApi.isCloudDeckHostByUuid(model.uuid) ||
+                                 CloudDeckManagerApi.isCloudDeckHost(cloudDeckMatchAddress)
             cloudDeckHasCredentials = CloudDeckManagerApi.hasStoredCredentials()
         }
 
@@ -214,7 +251,7 @@ CenteredGridView {
                         cloudDeckDialog.autoStartInstance = cloudDeckHasCredentials
                         cloudDeckDialog.open()
                     }
-                    visible: !model.online && model.paired && cloudDeckHostKnown
+                    visible: !model.online && cloudDeckHostKnown
                 }
                 NavigableMenuItem {
                     text: qsTr("Test Network")
@@ -254,6 +291,8 @@ CenteredGridView {
                     visible: cloudDeckHostKnown
                     onTriggered: {
                         cloudDeckSettingsDialog.hostUuid = model.uuid
+                        cloudDeckSettingsDialog.manualAddress = model.manualAddress
+                        cloudDeckSettingsDialog.activeAddress = model.activeAddress
                         cloudDeckSettingsDialog.open()
                     }
                 }
@@ -262,6 +301,8 @@ CenteredGridView {
                     visible: cloudDeckHostKnown
                     onTriggered: {
                         sessionTimerSettingsDialog.hostUuid = model.uuid
+                        sessionTimerSettingsDialog.manualAddress = model.manualAddress
+                        sessionTimerSettingsDialog.activeAddress = model.activeAddress
                         sessionTimerSettingsDialog.open()
                     }
                 }
@@ -490,12 +531,16 @@ CenteredGridView {
         id: cloudDeckSettingsDialog
         title: qsTr("CloudDeck Settings")
         property string hostUuid: ""
+        property string manualAddress: ""
+        property string activeAddress: ""
         property string cloudDeckUser: ""
         property string cloudDeckPassword: ""
         property bool cloudDeckHost: false
 
         onOpened: {
-            cloudDeckHost = CloudDeckManagerApi.isCloudDeckHostByUuid(hostUuid)
+            var hostAddress = manualAddress.length > 0 ? manualAddress : activeAddress
+            cloudDeckHost = CloudDeckManagerApi.isCloudDeckHostByUuid(hostUuid) ||
+                            CloudDeckManagerApi.isCloudDeckHost(hostAddress)
             if (cloudDeckHost) {
                 cloudDeckUser = "user"
                 cloudDeckPassword = CloudDeckManagerApi.getStoredHostPassword()
@@ -586,6 +631,8 @@ CenteredGridView {
         id: sessionTimerSettingsDialog
         title: qsTr("Session Timer Settings")
         property string hostUuid: ""
+        property string manualAddress: ""
+        property string activeAddress: ""
         property bool cloudDeckHost: false
         property int sessionTimerHours: 8
         property int sessionTimerDisplayMode: 1
@@ -595,7 +642,9 @@ CenteredGridView {
         property int compactFieldWidth: 58
 
         onOpened: {
-            cloudDeckHost = CloudDeckManagerApi.isCloudDeckHostByUuid(hostUuid)
+            var hostAddress = manualAddress.length > 0 ? manualAddress : activeAddress
+            cloudDeckHost = CloudDeckManagerApi.isCloudDeckHostByUuid(hostUuid) ||
+                            CloudDeckManagerApi.isCloudDeckHost(hostAddress)
             if (cloudDeckHost) {
                 sessionTimerHours = CloudDeckManagerApi.getSessionTimerHours()
                 sessionTimerDisplayMode = CloudDeckManagerApi.getSessionTimerDisplayMode()

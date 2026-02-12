@@ -12,10 +12,15 @@
   - Splits generic host details, CloudDeck credentials/Sunshine defaults, and timer configuration into separate focused dialogs.
   - Keeps the session timer controls compact with tighter spacing and smaller numeric inputs.
   - Defaults are now: `Only show before end`, `5` minutes remaining, and hourly reminder enabled for `5` seconds.
+  - Fixes CloudDeck context actions disappearing after restart/offline by removing menu dependence on transient `paired` state.
+  - Uses layered CloudDeck host detection in QML (UUID, then stored-address match, then hostname pattern fallback).
+  - Adds startup/add-time UUID reconciliation from the saved CloudDeck server address to keep host UUID mapping current.
 - app/gui/CloudDeckDialog.qml
   - Guards CloudDeck startup/pairing signal handlers against stale async callbacks after flow reset/close.
   - Adds validation before start commands to avoid empty machine/token command attempts.
   - Normalizes machine-status string parsing and validates `public_ip` before manual host add, preventing crash-prone empty/invalid host submissions.
+  - Persists CloudDeck host UUID via address-based re-resolution to avoid stale index races when host lists reorder.
+  - Persists/refreshes CloudDeck host UUID earlier in flow (after host add success and during manual start running-state confirmation).
 - app/gui/StreamSegue.qml
   - Adds one-shot CloudDeck `last_started` resolution before `session.start()` (login/machineId/status chain only when needed).
   - Applies fetched start timestamp and all timer display preferences to `Session` once, with timeout/fallback behavior and no polling during stream.
@@ -36,6 +41,7 @@
   - Adds persisted CloudDeck timer preferences with validation: hours, visibility mode, before-end minutes, hourly reminder enabled flag, and hourly reminder seconds.
   - Sets defaults to before-end visibility with `5` minute threshold and hourly reminder enabled.
   - Treats machine-command HTTP `409` conflict responses during active transitions as transient and keeps polling state instead of surfacing a hard failure.
+  - Extends `isCloudDeckHost()` with hostname-label fallback (`clouddeck`) so domains like `*.my.clouddeck.app` still identify as CloudDeck when UUID/address mappings are missing or stale.
 - clouddeck/clouddeckmanagerapi.h
   - Declares CloudDeck REST API surface, token expiry helpers, and machine metadata accessors for QML.
   - Declares CloudDeck timer preference getters/setters for QML usage.

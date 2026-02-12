@@ -47,3 +47,7 @@
 - Handled CloudDeck machine-command `409` conflicts during restart/transition as non-fatal and continued polling instead of failing the flow.
 - Guarded CloudDeck pairing against invalid/empty `public_ip` responses and normalized status parsing to avoid QML runtime crashes.
 - Added a safety guard in `ComputerModel::handleComputerStateChanged()` for stale computer pointers to prevent invalid `dataChanged()` index emissions.
+- Fixed missing `Turn CloudDeck ON` action after app restart when the host is offline by removing dependence on transient paired-state data.
+- Added CloudDeck host detection fallback order in UI: UUID match, stored-address match, then hostname pattern match (e.g. `*.my.clouddeck.app`).
+- Added startup reconciliation that restores/synchronizes stored CloudDeck host UUID from the saved server address when credentials and host data are already present.
+- Hardened CloudDeck UUID persistence during add/pair/start flows by resolving host identity via address at save time instead of relying on potentially stale list indices.

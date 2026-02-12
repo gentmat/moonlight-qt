@@ -109,13 +109,11 @@ NavigableDialog {
     }
 
     function resolvePendingPairIndex() {
-        if (pendingPairIndex >= 0) {
-            return pendingPairIndex
-        }
         if (!computerModel || pendingAddress.length === 0) {
             return -1
         }
-        return computerModel.findComputerByManualAddress(pendingAddress)
+        pendingPairIndex = computerModel.findComputerByManualAddress(pendingAddress)
+        return pendingPairIndex
     }
 
     function startAutoPairing(index) {
@@ -164,6 +162,39 @@ NavigableDialog {
             return ""
         }
         return String(address).trim()
+    }
+
+    function persistCloudDeckHostUuidFromIndex(index) {
+        if (!computerModel || index < 0) {
+            return false
+        }
+
+        var resolvedUuid = computerModel.getComputerUuid(index)
+        if (resolvedUuid === undefined || resolvedUuid === null || resolvedUuid.length === 0) {
+            return false
+        }
+
+        CloudDeckManagerApi.setCloudDeckHostUuid(resolvedUuid)
+        return true
+    }
+
+    function persistCloudDeckHostUuidByAddress(address) {
+        if (!computerModel) {
+            return false
+        }
+
+        var normalized = normalizeHostAddress(address)
+        if (normalized.length === 0) {
+            return false
+        }
+
+        var index = computerModel.findComputerByManualAddress(normalized)
+        if (index < 0) {
+            return false
+        }
+
+        pendingPairIndex = index
+        return persistCloudDeckHostUuidFromIndex(index)
     }
 
     function isValidHostAddress(address) {
@@ -329,6 +360,10 @@ NavigableDialog {
                     awaitingAddComplete = true
                     ComputerManager.addNewHostManually(pendingAddress)
                 } else if (manualStartInProgress) {
+                    if (isValidHostAddress(publicIp)) {
+                        // Refresh saved UUID when instance identity changed but address stayed stable.
+                        persistCloudDeckHostUuidByAddress(publicIp)
+                    }
                     statusText = qsTr("CloudDeck instance is running.")
                     manualStartInProgress = false
                     busy = false
@@ -398,6 +433,8 @@ NavigableDialog {
                 return
             }
 
+            // Persist UUID as soon as the host resolves in Moonlight, even before pairing completes.
+            persistCloudDeckHostUuidByAddress(pendingAddress)
             retryCount = 0
             statusText = qsTr("Waiting for CloudDeck host to appear...")
             pairingRetryTimer.start()
@@ -426,8 +463,9 @@ NavigableDialog {
             pairingRetryCount = 0
 
             // Persist the host UUID for reliable CloudDeck host identification
-            if (pendingPairIndex >= 0) {
-                CloudDeckManagerApi.setCloudDeckHostUuid(computerModel.getComputerUuid(pendingPairIndex))
+            var resolvedIndex = resolvePendingPairIndex()
+            if (resolvedIndex >= 0) {
+                persistCloudDeckHostUuidFromIndex(resolvedIndex)
             }
 
             statusText = qsTr("CloudDeck paired successfully.")

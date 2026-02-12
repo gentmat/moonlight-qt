@@ -7,6 +7,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSettings>
+#include <QStringList>
 #include <QUrl>
 #include <QDebug>
 #include <limits>
@@ -143,6 +144,17 @@ QString normalizeAddress(const QString& value)
     }
 
     return trimmed;
+}
+
+bool hasCloudDeckDomainLabel(const QString& normalizedHost)
+{
+    if (normalizedHost.isEmpty()) {
+        return false;
+    }
+
+    const QString hostLower = normalizedHost.toLower();
+    const QStringList labels = hostLower.split('.', Qt::SkipEmptyParts);
+    return labels.contains(QStringLiteral("clouddeck"));
 }
 
 void applyAuthHeader(QNetworkRequest &request, const QString &accessToken)
@@ -436,10 +448,18 @@ bool CloudDeckManagerApi::isCloudDeckHost(const QString &hostAddress) const
     const QString storedAddress = settings.value("clouddeck/serverAddress").toString();
     const QString normalizedHost = normalizeAddress(hostAddress);
     const QString normalizedStored = normalizeAddress(storedAddress);
-    if (normalizedStored.isEmpty() || normalizedHost.isEmpty()) {
+    if (normalizedHost.isEmpty()) {
         return false;
     }
-    return normalizedHost.compare(normalizedStored, Qt::CaseInsensitive) == 0;
+
+    if (!normalizedStored.isEmpty() &&
+            normalizedHost.compare(normalizedStored, Qt::CaseInsensitive) == 0) {
+        return true;
+    }
+
+    // Fallback for CloudDeck hostnames like *.my.clouddeck.app when the
+    // persisted address/UUID match is not available yet.
+    return hasCloudDeckDomainLabel(normalizedHost);
 }
 
 bool CloudDeckManagerApi::isCloudDeckHostByUuid(const QString &uuid) const
